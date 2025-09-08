@@ -1,0 +1,24 @@
+services:
+  spacer:
+    build: .
+    image: spacer:latest
+    container_name: spacer
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.spacer.rule=Host(`spacer.vectorhost.net`) || Host(`sir.vectorhost.net`)"
+      - "traefik.http.routers.spacer.entrypoints=websecure"
+      - "traefik.http.routers.spacer.tls=true"
+      - "traefik.http.routers.spacer.tls.certresolver=${TRAEFIK_CERTRESOLVER:-letsencrypt}"
+      - "traefik.http.services.spacer.loadbalancer.server.port=80"
+      - "traefik.docker.network=web"
+      - "traefik.http.routers.spacer-web.rule=Host(`spacer.vectorhost.net`) || Host(`sir.vectorhost.net`)"
+      - "traefik.http.routers.spacer-web.entrypoints=web"
+      - "traefik.http.routers.spacer-web.middlewares=spacer-redirect"
+      - "traefik.http.middlewares.spacer-redirect.redirectscheme.scheme=https"
+    networks:
+      - web
+
+networks:
+  web:
+    external: true

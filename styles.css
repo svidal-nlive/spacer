@@ -1,0 +1,2 @@
+html,body{margin:0;height:100%;background:#0a0d12;color:#b7f3ff;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+#game{display:block;width:100vw;height:100vh;background:radial-gradient(50% 50% at 50% 50%, #0f1621 0%, #0a0d12 70%);} 
