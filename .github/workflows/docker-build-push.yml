@@ -61,18 +61,7 @@ jobs:
           script: |
             set -e
             cd /home/${{ secrets.DEPLOY_USER }}/homelab/projects/spacer
-            # Optional: login to GHCR if token provided (for private images)
-            if [ -n "$GHCR_TOKEN" ]; then
-              echo "$GHCR_TOKEN" | docker login ghcr.io -u "${GHCR_USERNAME:-${{ github.actor }}}" --password-stdin
-            fi
-            # Try to pull the latest image; if it fails (e.g., unauthorized), fall back to local build
-            set +e
+            # Always authenticate to GHCR and pull latest image
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "${GHCR_USERNAME:-${{ github.actor }}}" --password-stdin
             docker compose pull
-            PULL_STATUS=$?
-            set -e
-            if [ "$PULL_STATUS" -ne 0 ]; then
-              echo "WARN: docker compose pull failed (code=$PULL_STATUS). Falling back to local build..."
-              docker compose up -d --build --remove-orphans
-            else
-              docker compose up -d --remove-orphans
-            fi
+            docker compose up -d --remove-orphans
