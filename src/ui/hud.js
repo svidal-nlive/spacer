@@ -1,6 +1,7 @@
 // ui/hud.js - draw top bar, heat ring
 import { ctx, canvas } from '../core/canvas.js';
 import { game } from '../core/state.js';
+import { bossActive } from '../entities/boss.js';
 export function drawTopBar({score, wave, heat, heatMax, muted, twoXActive, twoXAlpha}){
   const w = canvas.width; const dpr = window.devicePixelRatio || 1; const barH = 32*dpr;
   ctx.save(); ctx.resetTransform(); ctx.scale(dpr,dpr);
@@ -68,6 +69,21 @@ export function drawHeatRing(cx, cy, r, pct){
   ctx.save();
   ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.strokeStyle='#132033'; ctx.lineWidth=4; ctx.stroke();
   ctx.beginPath(); ctx.arc(cx,cy,r,start,end); ctx.strokeStyle=pct<0.8? '#25d0ff' : pct<1? '#ffb63b':'#ff4d6d'; ctx.lineWidth=4; ctx.stroke();
+  ctx.restore();
+}
+
+export function drawBossBar(name, hp, maxHp){
+  if(!bossActive() || maxHp<=0) return;
+  const dpr = window.devicePixelRatio || 1; const PAD = 12; const TOPBAR_H = 32; const GAP = 8;
+  const wCSS = canvas.width/dpr; const barW = Math.min(420, wCSS - PAD*2); const barH = 10;
+  const x = (wCSS - barW)/2; const y = PAD + TOPBAR_H + GAP;
+  const pct = Math.max(0, Math.min(1, hp/maxHp));
+  ctx.save(); ctx.resetTransform(); ctx.scale(dpr,dpr);
+  ctx.fillStyle = 'rgba(10,13,18,0.9)'; ctx.fillRect(x, y, barW, barH);
+  ctx.strokeStyle = '#1e2f45'; ctx.strokeRect(x+0.5, y+0.5, barW-1, barH-1);
+  ctx.fillStyle = '#ff6b6b'; ctx.fillRect(x, y, barW*pct, barH);
+  ctx.fillStyle = '#ffd3d3'; ctx.font='11px system-ui,sans-serif'; ctx.textAlign='center';
+  ctx.fillText(`${name}`, x + barW/2, y - 4);
   ctx.restore();
 }
 

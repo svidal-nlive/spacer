@@ -3,7 +3,8 @@ import { rand } from '../core/rng.js';
 import { game } from '../core/state.js';
 import { spawnPickup } from './pickup.js';
 import { spawnEnemyDeathFX } from '../systems/effects.js';
-import { maybeAffixElite } from './elite.js';
+import { maybeAffixElite, handleEliteOnDeath, drawEliteName } from './elite.js';
+import { getColdSlowMul, getBossBarrierWorldY } from '../systems/effects.js';
 import { beep, isMuted } from '../core/audio.js';
 import { spawnEnemyShot } from './enemyShot.js';
 const MAX = 256;
@@ -17,8 +18,14 @@ export function spawnEnemy(radius, type='grunt'){
   // Desync firing cadence a bit to avoid synchronized volleys
   e.fireCd *= rand(0.9, 1.15);
   e.fireT *= rand(0.6, 1.4);
-  // Low chance to roll an elite modifier (scaled later per wave)
-  maybeAffixElite(e, 0.07);
+  // Elite roll — chance scales up slowly with wave; allow rare double stacks late
+  const w = game.wave||1;
+  const base = 0.06, per = 0.01; // cautious
+  const chance = Math.min(0.18, base + (w-1)*per);
+  const maxStacks = w>=6? 2 : 1;
+  maybeAffixElite(e, { chance, maxStacks });
+  // Spawn stinger on elite
+  if(e.elite && !isMuted()) beep({freq:720, freqEnd:540, type:'triangle', duration:0.07, gain:0.035, attack:0.003, release:0.05});
   return e;
 }
 
@@ -31,16 +38,32 @@ export function spawnEnemyAt(x, y, type='grunt'){
   // Desync firing cadence a bit to avoid synchronized volleys
   e.fireCd *= rand(0.9, 1.15);
   e.fireT *= rand(0.6, 1.4);
-  maybeAffixElite(e, 0.07);
+  // Elite roll — same as edge spawn
+  const w = game.wave||1; const base = 0.06, per = 0.01; const chance = Math.min(0.18, base + (w-1)*per); const maxStacks = w>=6? 2 : 1;
+  maybeAffixElite(e, { chance, maxStacks });
+  if(e.elite && !isMuted()) beep({freq:720, freqEnd:540, type:'triangle', duration:0.07, gain:0.035, attack:0.003, release:0.05});
   return e;
 }
 export const PLAYER_R = 22; // turret body radius
 export function updateEnemies(dt){
   for(const e of enemies){
     if(!e.active) continue;
-    const d = Math.hypot(e.x,e.y);
-    const slowMul = game.powerups.slowT>0? 0.55 : 1.0;
-    if(d>1){ e.x += (-e.x/d)*e.speed*slowMul*dt; e.y += (-e.y/d)*e.speed*slowMul*dt; }
+    // elite name tag timer
+    if(e.eliteNameT && e.eliteNameT>0){ e.eliteNameT = Math.max(0, e.eliteNameT - dt); }
+  const d = Math.hypot(e.x,e.y);
+  const slowMul = game.powerups.slowT>0? 0.55 : 1.0;
+  // Apply Cold aura slow (elite death field)
+  const auraMul = getColdSlowMul(e.x, e.y);
+  const moveMul = slowMul * auraMul;
+  if(d>1){ e.x += (-e.x/d)*e.speed*moveMul*dt; e.y += (-e.y/d)*e.speed*moveMul*dt; }
+    // Boss top-down barrier: prevent enemies from crossing below the barrier line; apply soft clamp
+    if(game.arenaMode==='topdown'){
+      const yBar = getBossBarrierWorldY();
+      const soft = 8; // px
+      if(e.y > yBar - soft){
+        e.y = yBar - soft;
+      }
+    }
     // firing with simple telegraph
     e.fireT -= dt;
     if(e.fireT<=0){
@@ -80,14 +103,24 @@ export function damageEnemy(e, dmg){
   e.active=false; const mult = game.powerups.twoXT>0? 2:1; const cred = (e.type==='tank'? 2:1);
   game.score += 100*mult; game.credits += cred*mult; game.earnedThisWave += cred*mult;
   spawnEnemyDeathFX(e.x, e.y, e.type==='tank'? '#ff946b': '#ffd166');
+  // elite on-death
+  handleEliteOnDeath(e);
+  // Volatile AoE damage trigger
+  if(e._eliteVolatileBoom){
+    const boom = e._eliteVolatileBoom; // {x,y,radius,dmg}
+    for(const ee of enemies){ if(!ee.active) continue; const dd = Math.hypot(ee.x - boom.x, ee.y - boom.y); if(dd <= boom.radius){ ee.hp -= boom.dmg; if(ee.hp<=0){ ee.active=false; const m = game.powerups.twoXT>0? 2:1; const c = (ee.type==='tank'? 2:1); game.score += 100*m; game.credits += c*m; game.earnedThisWave += c*m; spawnEnemyDeathFX(ee.x, ee.y, ee.type==='tank'? '#ff946b': '#ffd166'); handleEliteOnDeath(ee); } } }
+  }
   if(!isMuted()) beep({freq:500, freqEnd:350, type:'triangle', duration:0.06, gain:0.03, attack:0.003, release:0.05});
   // small chance to drop a pickup
   if(Math.random()<0.18){ spawnPickup(e.x, e.y); }
   }
 }
 export function drawEnemies(ctx){ ctx.save(); for(const e of enemies){ if(!e.active) continue; ctx.strokeStyle='#25d0ff33'; ctx.fillStyle= e.type==='tank'? '#2a2c3a' : e.type==='striker'? '#18283d' : '#1a2a40'; ctx.beginPath(); ctx.arc(e.x,e.y,e.r,0,Math.PI*2); ctx.fill(); ctx.stroke();
-  // Elite outline
-  if(e.elite){ ctx.save(); ctx.strokeStyle = e.eliteColor || '#25d0ff'; ctx.globalAlpha=0.85; ctx.lineWidth = (e.eliteOutline||1.5); ctx.beginPath(); ctx.arc(e.x,e.y,e.r+3,0,Math.PI*2); ctx.stroke(); ctx.restore(); }
+  // Elite outline + tag
+  if(e.elite){ ctx.save(); ctx.strokeStyle = e.eliteColor || '#25d0ff'; ctx.globalAlpha=0.85; ctx.lineWidth = (e.eliteOutline||1.5); ctx.beginPath(); ctx.arc(e.x,e.y,e.r+3,0,Math.PI*2); ctx.stroke(); ctx.restore();
+  // name tag
+  drawEliteName(ctx, e);
+  }
   if(e.tel>0){ ctx.save(); ctx.globalAlpha=Math.min(0.9,e.tel*2.5); ctx.strokeStyle='#ffb63b'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(e.x,e.y,e.r+4,0,Math.PI*2); ctx.stroke(); ctx.restore(); } } ctx.restore(); }
 
 export function resetEnemies(){

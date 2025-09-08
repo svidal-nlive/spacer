@@ -10,11 +10,12 @@ import { handleBulletEnemyCollisions } from '../systems/collisions.js';
 import { handleBulletEnemyShotCollisions } from '../systems/bullet_vs_enemyShot.js';
 import { updateLasers, drawLasers, handleLaserEnemyShotCollisions } from '../entities/laser.js';
 import { updateLaserAI, resetLaserAI } from '../systems/laser_ai.js';
-import { drawTopBar, drawHeatRing } from '../ui/hud.js';
+import { drawTopBar, drawHeatRing, drawBossBar } from '../ui/hud.js';
 import { setScene } from '../engine/sceneManager.js';
 import { shopScene } from './shop.js';
 import { gameOverScene } from './gameover.js';
-import { updateEffects, drawEffects, spawnPulsarFX, spawnEmpFX, spawnEnemyDeathFX } from '../systems/effects.js';
+import { updateEffects, drawEffects, spawnPulsarFX, spawnEmpFX, spawnEnemyDeathFX, triggerLetterboxIn, triggerLetterboxOut, enableBossBarrier, disableBossBarrier, getBossBarrierWorldY, getBossBarrierScreenY } from '../systems/effects.js';
+import { spawnBoss, updateBoss, drawBoss, bossActive, boss } from '../entities/boss.js';
 import { beep, isMuted } from '../core/audio.js';
 import { updatePickups, drawPickups, forEachPickup, deactivatePickup } from '../entities/pickup.js';
 
@@ -26,17 +27,36 @@ export const waveScene = {
   quota: 0,
   camZoom: 1,
   autoAbilityCd: 0,
+  // wave flow state
+  state: 'spawn', // 'spawn' -> 'clear' -> (boss waves) 'bossIntro' -> 'bossFight' -> 'bossOutro' -> 'end'
+  stateT: 0,
   enter(){
     this.enemySpawnT = 0; this.fireCooldown = 0; this.spawned = 0; game.lastReward = 0; game.earnedThisWave = 0; game.lastRewardKills = 0; game.lastRewardClear = 0;
     // set a per-wave quota and alive cap
   const base = 10, perWave = 8;
     this.quota = base + (game.wave-1)*perWave;
   resetLaserAI();
+  // initialize flow state
+  this.state = 'spawn'; this.stateT = 0; game.arenaMode = 'ring';
+  // Reset overlays and boss if this is not a boss wave
+  if(!isBossWave()){
+    disableBossBarrier(); triggerLetterboxOut(0.001); game.player.y = 0; game.player.targetY = 0;
+    if(bossActive()) boss.active = false;
+  }
   // Notify UI to show play overlay
   window.dispatchEvent(new CustomEvent('spacer:show-ui', { detail:{ type:'play' } }));
     this.autoAbilityCd = 0;
+  // If boss wave, kick off cinematic immediately so it’s apparent
+  if(isBossWave()){
+    triggerLetterboxIn(0.8); enableBossBarrier(); game.arenaMode='topdown';
+    // Pre-position player below barrier so camera shift is evident
+    const yScreen = getBossBarrierScreenY();
+    game.player.y = (yScreen - (canvas.height*0.5)) + 10; game.player.targetY = game.player.y;
+    this.state = 'bossIntro'; this.stateT = 0;
+  }
   },
   update(dt){
+  this.stateT += dt;
   // gamepad ability triggers
   if(input.gpQTriggered) usePulsar();
   if(input.gpETriggered) useEmp();
@@ -104,33 +124,69 @@ export const waveScene = {
       }
       this.fireCooldown = (1/game.rof) / rapidMul;
     }
-    // spawn using quota + alive cap with type mix
-    const aliveCap = Math.min(6 + game.wave*2, 20);
+    // count alive for flow
     let alive=0; forEachEnemy(e=>{ if(e.active) alive++; });
-    this.enemySpawnT -= dt;
-    if(this.spawned < this.quota && this.enemySpawnT<=0 && alive<aliveCap){
-      // choose type by wave: early mostly grunts; add strikers then tanks
-      const w = game.wave;
-      const r = Math.random();
-      let type = 'grunt';
-      if(w>=2 && r<0.3) type='striker';
-      if(w>=4 && r<0.15) type='tank';
-      // spawn from a random screen edge
-      const dpr = window.devicePixelRatio || 1; const wpx = canvas.width/dpr, hpx = canvas.height/dpr;
-      const side = Math.floor(Math.random()*4); // 0=top,1=right,2=bottom,3=left
-      let x=0,y=0; const pad=24;
-      if(side===0){ x = (Math.random()* (wpx-2*pad)) - (wpx/2 - pad); y = -(hpx/2 + pad); }
-      if(side===1){ x =  (wpx/2 + pad); y = (Math.random()* (hpx-2*pad)) - (hpx/2 - pad); }
-      if(side===2){ x = (Math.random()* (wpx-2*pad)) - (wpx/2 - pad); y =  (hpx/2 + pad); }
-      if(side===3){ x = -(wpx/2 + pad); y = (Math.random()* (hpx-2*pad)) - (hpx/2 - pad); }
-      const e = spawnEnemyAt(x, y, type);
-      if(e){ this.spawned += e.quota; }
-      this.enemySpawnT = Math.max(0.2, 1.2 - game.wave*0.05);
+    // wave flow state machine
+    if(this.state==='spawn'){
+      // spawn using quota + alive cap with type mix
+      const aliveCap = Math.min(6 + game.wave*2, 20);
+      this.enemySpawnT -= dt;
+      if(this.spawned < this.quota && this.enemySpawnT<=0 && alive<aliveCap){
+        // choose type by wave: early mostly grunts; add strikers then tanks
+        const wv = game.wave;
+        const r = Math.random();
+        let type = 'grunt';
+        if(wv>=2 && r<0.3) type='striker';
+        if(wv>=4 && r<0.15) type='tank';
+        // spawn from a random screen edge
+        const dpr = window.devicePixelRatio || 1; const wpx = canvas.width/dpr, hpx = canvas.height/dpr;
+        const side = Math.floor(Math.random()*4); // 0=top,1=right,2=bottom,3=left
+        let x=0,y=0; const pad=24;
+        if(side===0){ x = (Math.random()* (wpx-2*pad)) - (wpx/2 - pad); y = -(hpx/2 + pad); }
+        if(side===1){ x =  (wpx/2 + pad); y = (Math.random()* (hpx-2*pad)) - (hpx/2 - pad); }
+        if(side===2){ x = (Math.random()* (wpx-2*pad)) - (wpx/2 - pad); y =  (hpx/2 + pad); }
+        if(side===3){ x = -(wpx/2 + pad); y = (Math.random()* (hpx-2*pad)) - (hpx/2 - pad); }
+        const e = spawnEnemyAt(x, y, type);
+        if(e){ this.spawned += e.quota; }
+        this.enemySpawnT = Math.max(0.2, 1.2 - game.wave*0.05);
+      }
+      // move to clear once quota met
+      if(this.spawned>=this.quota){ this.state='clear'; this.stateT=0; }
+    }
+    else if(this.state==='clear'){
+      // wait for board to clear, then branch: boss wave or end
+      if(alive===0){
+        if(isBossWave()){
+          // cinematic intro and barrier
+          triggerLetterboxIn(0.8); enableBossBarrier(); game.arenaMode='topdown'; this.state='bossIntro'; this.stateT=0;
+        } else {
+          this.state='end'; this.stateT=0; concludeWave(); return;
+        }
+      }
+    }
+    else if(this.state==='bossIntro'){
+      // Let the cinematic breathe briefly, then spawn boss
+      if(this.stateT>=1.0 && !bossActive()){
+        spawnBoss();
+      }
+      if(bossActive()){
+        this.state='bossFight'; this.stateT=0;
+      }
+    }
+    else if(this.state==='bossFight'){
+      // gate until boss dies
+      if(!bossActive()){
+        this.state='bossOutro'; this.stateT=0; triggerLetterboxOut(0.6); disableBossBarrier(); game.arenaMode='ring';
+      }
+    }
+    else if(this.state==='bossOutro'){
+      if(this.stateT>=0.65){ this.state='end'; this.stateT=0; concludeWave(); return; }
     }
 
   updateBullets(dt); updateEnemies(dt); updateEnemyShots(dt); handleBulletEnemyCollisions(); handleBulletEnemyShotCollisions();
   updateLaserAI(dt); updateLasers(dt); handleLaserEnemyShotCollisions();
   updateEffects(dt);
+  updateBoss(dt);
   // pickups
   updatePickups(dt);
   // collect: player collects by proximity to turret center
@@ -145,19 +201,17 @@ export const waveScene = {
   if(game.powerups.slowT>0) game.powerups.slowT = Math.max(0, game.powerups.slowT - dt);
   if(game.powerups.twoXT>0) game.powerups.twoXT = Math.max(0, game.powerups.twoXT - dt);
 
-    // end conditions
-    if(game.lives<=0){ setScene(gameOverScene); return; }
-    if(this.spawned>=this.quota && alive===0){
-      const base = 10 + Math.floor(game.wave*3);
-      // credit breakdown
-      game.lastRewardKills = game.earnedThisWave;
-      game.lastRewardClear = base;
-      // grant the base clear bonus now
-      game.credits += base;
-      game.lastReward = game.lastRewardKills + game.lastRewardClear;
-      game.wave++;
-      // go to shop
-      setScene(shopScene);
+  // end conditions
+  if(game.lives<=0){ setScene(gameOverScene); return; }
+    // Update player target render offset per arena mode
+    if(game.arenaMode==='topdown'){
+      // Place turret 10px below the barrier line (compute offset from screen center)
+      const yScreen = getBossBarrierScreenY();
+      const offsetFromCenter = yScreen - (canvas.height * 0.5);
+      game.player.targetY = offsetFromCenter + 10;
+    } else {
+      // Return to center in ring mode
+      game.player.targetY = 0;
     }
   },
   render(){
@@ -169,7 +223,10 @@ export const waveScene = {
     const cx = canvas.width/2, cy = canvas.height/2;
   ctx.save();
   // Use DPR-aware world transform for all world elements (fixes tiny/hidden turret on mobile)
-  ctx.setTransform(dpr*this.camZoom,0,0,dpr*this.camZoom,cx,cy);
+  // Smoothly ease player render offset to target
+  const ease = 0.12;
+  game.player.y += (game.player.targetY - game.player.y) * ease;
+  ctx.setTransform(dpr*this.camZoom,0,0,dpr*this.camZoom,cx,cy + game.player.y);
   // turret (higher contrast + outline)
   ctx.fillStyle = '#0e1b2b';
   ctx.beginPath(); ctx.arc(0,0, 22, 0, Math.PI*2); ctx.fill();
@@ -179,7 +236,11 @@ export const waveScene = {
   // barrel
   ctx.save(); ctx.rotate(input.aimAngle); ctx.fillStyle = game.overheated? '#ff4d6d':'#25d0ff'; ctx.fillRect(0,-4,32,8); ctx.restore();
   // world entities
-  drawBullets(ctx); drawEnemies(ctx); drawPickups();
+  drawBullets(ctx);
+  // In boss cinematic phases, avoid drawing regular enemies during intro for clarity
+  if(this.state!=='bossIntro') drawEnemies(ctx);
+  drawPickups();
+  drawBoss(ctx);
   // AUTO grid visualization (faint) in world space
   if(game.autoFire && game.showAutoGrid){
     ctx.save();
@@ -192,17 +253,33 @@ export const waveScene = {
   }
   // VFX + enemy shots
   drawEffects(); drawEnemyShots(); drawLasers();
-    ctx.restore();
-  drawHeatRing(canvas.width/2, canvas.height/2, 30, game.heat/game.heatMax);
+  ctx.restore();
+  drawHeatRing(canvas.width/2, canvas.height/2 + game.player.y, 30, game.heat/game.heatMax);
   // top bar with ability chips
   // compute a fade alpha for 2x badge: ease in first 0.5s, ease out last 0.5s
   let twoXAlpha = 0;
   if(game.powerups.twoXT>0){ const t = game.powerups.twoXT; const max = 15; const head = 0.5, tail = 0.5; const inA = Math.min(1, (max - t)/head); const outA = Math.min(1, t/tail); twoXAlpha = Math.min(inA, outA); }
   drawTopBar({score: game.score, wave: `${game.wave}  ❤${game.lives}  ⓒ${game.credits} (+${game.earnedThisWave})`, heat: game.heat, heatMax: game.heatMax, muted: false, twoXActive: game.powerups.twoXT>0, twoXAlpha});
   drawAbilityUI();
+  if(bossActive()) drawBossBar(boss.name, boss.hp, boss.maxHp);
   drawScreenEdgeFlash();
   }
 };
+
+function isBossWave(){ return (game.wave % 5) === 0; }
+
+function concludeWave(){
+  const base = 10 + Math.floor(game.wave*3);
+  // credit breakdown
+  game.lastRewardKills = game.earnedThisWave;
+  game.lastRewardClear = base;
+  // grant the base clear bonus now
+  game.credits += base;
+  game.lastReward = game.lastRewardKills + game.lastRewardClear;
+  game.wave++;
+  // go to shop
+  setScene(shopScene);
+}
 
 // ability triggers (keyboard/gamepad)
 window.addEventListener('keydown', (e)=>{
@@ -323,7 +400,7 @@ function drawCooldownBar(x,y,w,h,pct,color,flash){
 }
 
 function drawAbilityRings(){
-  const cx = canvas.width/2, cy = canvas.height/2; const dpr = window.devicePixelRatio || 1; ctx.save(); ctx.setTransform(dpr,0,0,dpr,0,0);
+  const cx = canvas.width/2, cy = canvas.height/2 + game.player.y; const dpr = window.devicePixelRatio || 1; ctx.save(); ctx.setTransform(dpr,0,0,dpr,0,0);
   // draw two thin rings around the heat ring radius
   const baseR = 38; const r1 = baseR + 10, r2 = baseR + 16;
   const pQ = 1 - (game.abilQ_cd>0? game.abilQ_cd/game.abilQ_max : 0);
@@ -470,3 +547,6 @@ function alphaHex(a){ // a in [0,1]
   const v = Math.round(Math.min(1, Math.max(0,a)) * 255).toString(16).padStart(2,'0');
   return v;
 }
+
+// Lazy getter to avoid import cycles in some bundlers (should be fine in Vite)
+// no-op helper removed; direct import used

@@ -23,8 +23,11 @@ Tip: For partial implementations, leave boxes unchecked, but add a short note af
 	- [ ] Polish: fuse glow, expanding warning ring, shard twinkle SFX
 
 #### Enemy Elites & Modifiers
-- [ ] Elite framework (prefix modifiers applied on spawn: Shielded, Swift, Juggernaut, Cold, Volatile)
-	- [ ] Polish: elite outline + name tag, unique death burst
+- [x] Elite framework (affixes applied on spawn: Shielded, Swift, Juggernaut, Cold, Volatile; weighted, optional stacking later waves)
+	- [x] Basic: stat mods, per-wave chance scaling, spawn stinger
+	- [x] UX: elite outline + name tag fade
+	- [x] Hooks: unique death burst per affix (Cold, Volatile implemented; others pending)
+	- [ ] More affixes: Cold, Volatile (not implemented)
 - [ ] Affix pool with stacking caps and weighted rarity
 	- [ ] Polish: spawn stinger SFX, subtle screen vignette while an elite is alive
 

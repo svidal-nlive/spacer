@@ -38,4 +38,8 @@ export const game = {
   pickupStacks: { rapid: 0, spread: 0, shield: 0, slow: 0, twox: 0, bomb: 0 },
   // transient pulses when a stack activates (for HUD glow)
   stackPulse: { rapid: 0, spread: 0, shield: 0, slow: 0, twox: 0, bomb: 0 },
+  // arena mode: 'ring' (default) or 'topdown' (boss fights)
+  arenaMode: 'ring',
+  // player render offset (logic still uses origin 0,0). Used to place the turret lower in top-down boss mode
+  player: { y: 0, targetY: 0 },
 };

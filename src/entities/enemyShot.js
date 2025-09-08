@@ -1,6 +1,7 @@
 // entities/enemyShot.js - enemy projectiles
 import { canvas, ctx } from '../core/canvas.js';
 import { game } from '../core/state.js';
+import { getColdSlowMul } from '../systems/effects.js';
 
 const MAX = 512;
 const pool = Array.from({length:MAX}, ()=>({active:false,x:0,y:0,vx:0,vy:0,r:6,ttl:0,col:'#ffb63b'}));
@@ -17,10 +18,21 @@ export function spawnEnemyShot(x,y, ang, speed=220, color='#ffb63b'){
   s.active=true; s.x=x; s.y=y; s.vx=Math.cos(ang)*v; s.vy=Math.sin(ang)*v; s.r=6; s.ttl=7.0; s.col=color; return s;
 }
 
+export function spawnRadialShots(x, y, count=12, speed=220, color='#ffb63b', offset=0){
+  const step = (Math.PI*2) / count;
+  for(let i=0;i<count;i++){
+    const a = offset + i*step;
+    spawnEnemyShot(x, y, a, speed, color);
+  }
+}
+
 export function updateEnemyShots(dt){
   for(const s of pool){ if(!s.active) continue; s.x += s.vx*dt; s.y += s.vy*dt; s.ttl -= dt; if(s.ttl<=0){ s.active=false; continue; }
     // simple bounds check (offscreen padding)
-    const pad = 32; if(Math.abs(s.x) > canvas.width/2 + pad || Math.abs(s.y) > canvas.height/2 + pad){ s.active=false; continue; }
+  const pad = 32; if(Math.abs(s.x) > canvas.width/2 + pad || Math.abs(s.y) > canvas.height/2 + pad){ s.active=false; continue; }
+  // apply slow aura to projectile velocity
+  const mul = getColdSlowMul(s.x, s.y);
+  if(mul < 1){ s.vx *= mul; s.vy *= mul; }
     // collide with player
     const PLAYER_R = 22;
     const d = Math.hypot(s.x, s.y);
