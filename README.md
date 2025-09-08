@@ -20,3 +20,7 @@ Open the URL printed in the terminal.
 - Audio toggle: press m (click canvas first to init audio)
 
 See docs/design-plan.md for the full roadmap and module map.
+
+## CI/CD
+
+Pushes to main build and publish a Docker image to GHCR and deploy on the server via docker compose.
