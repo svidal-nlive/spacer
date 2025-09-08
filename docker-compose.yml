@@ -1,10 +1,7 @@
-version: "3.8"
-
 services:
   spacer:
-    # Use published image by default; fall back to local build if pull fails
-    image: ghcr.io/svidal-nlive/spacer:latest
-    build: .
+    # Use published GHCR image
+    image: "ghcr.io/svidal-nlive/spacer:latest"
     container_name: spacer
     restart: unless-stopped
     labels:
