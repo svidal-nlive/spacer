@@ -1,7 +1,8 @@
 services:
   spacer:
-    build: .
-    image: spacer:latest
+    # Use published image by default; comment to build locally
+    image: ghcr.io/svidal-nlive/spacer:latest
+    # build: .
     container_name: spacer
     restart: unless-stopped
     labels:
