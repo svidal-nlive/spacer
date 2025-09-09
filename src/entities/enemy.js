@@ -1,6 +1,6 @@
 // entities/enemy.js - simple spawn from rim toward center
 import { rand } from '../core/rng.js';
-import { game } from '../core/state.js';
+import { game, getPlayerWorldPos } from '../core/state.js';
 import { spawnPickup } from './pickup.js';
 import { spawnEnemyDeathFX } from '../systems/effects.js';
 import { maybeAffixElite, handleEliteOnDeath, drawEliteName } from './elite.js';
@@ -50,12 +50,14 @@ export function updateEnemies(dt){
     if(!e.active) continue;
     // elite name tag timer
     if(e.eliteNameT && e.eliteNameT>0){ e.eliteNameT = Math.max(0, e.eliteNameT - dt); }
-  const d = Math.hypot(e.x,e.y);
+  const player = getPlayerWorldPos();
+  const dxToP = player.x - e.x, dyToP = player.y - e.y;
+  const d = Math.hypot(dxToP,dyToP);
   const slowMul = game.powerups.slowT>0? 0.55 : 1.0;
   // Apply Cold aura slow (elite death field)
   const auraMul = getColdSlowMul(e.x, e.y);
   const moveMul = slowMul * auraMul;
-  if(d>1){ e.x += (-e.x/d)*e.speed*moveMul*dt; e.y += (-e.y/d)*e.speed*moveMul*dt; }
+  if(d>1){ e.x += (dxToP/d)*e.speed*moveMul*dt; e.y += (dyToP/d)*e.speed*moveMul*dt; }
     // Boss top-down barrier: prevent enemies from crossing below the barrier line; apply soft clamp
     if(game.arenaMode==='topdown'){
       const yBar = getBossBarrierWorldY();
@@ -69,10 +71,10 @@ export function updateEnemies(dt){
     if(e.fireT<=0){
       if(e.tel<=0){ e.tel = 0.25; e.fireT = 0.25; }
       else {
-        let ang = Math.atan2(-e.y, -e.x);
+  let ang = Math.atan2(player.y - e.y, player.x - e.x);
         // Add slight aim error when close to player to increase fairness
         // Max error ~0.18 rad up close, tapering to 0 beyond 260px
-        const close=120, far=260; const dAim = Math.hypot(e.x,e.y);
+  const close=120, far=260; const dAim = Math.hypot(dxToP,dyToP);
         if(dAim < far){ let t=(far - dAim)/(far - close); if(t<0) t=0; if(t>1) t=1; const maxErr=0.18*t; ang += (Math.random()*2-1)*maxErr; }
   const speed = e.type==='striker'? 240 : e.type==='tank'? 180 : 200;
         const color = e.type==='tank'? '#ff946b' : '#ffb63b';
@@ -81,7 +83,7 @@ export function updateEnemies(dt){
       }
     } else if(e.tel>0){ e.tel = Math.max(0, e.tel - dt); }
     // reach center -> damage player
-    if(d <= PLAYER_R + e.r){
+  if(d <= PLAYER_R + e.r){
       e.active=false;
       if(game.invulnT>0){
         // ignore while invulnerable

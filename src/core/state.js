@@ -26,6 +26,8 @@ export const game = {
   showAbilityLabels: true,
   abilityUiMode: 'corner', // 'corner' | 'ring'
   abilityUiCorner: 'bottom-right', // 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+  // dev tools
+  devMode: false,
   // transient UI timers
   readyFlashQ: 0, readyFlashE: 0,
   screenFlash: 0,
@@ -43,3 +45,11 @@ export const game = {
   // player render offset (logic still uses origin 0,0). Used to place the turret lower in top-down boss mode
   player: { y: 0, targetY: 0 },
 };
+
+// Current world-space position of the player entity (turret). Rendering may offset the camera,
+// but gameplay logic anchors the player at world origin for now.
+export function getPlayerWorldPos(){
+  // For ring mode, the player is at origin. In topdown, gameplay still uses origin
+  // but we can switch to a projected position if desired later.
+  return { x: 0, y: 0 };
+}

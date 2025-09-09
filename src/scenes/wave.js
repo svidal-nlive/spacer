@@ -291,25 +291,28 @@ window.addEventListener('keydown', (e)=>{
 });
 
 import { getScene as getSceneRef } from '../engine/sceneManager.js';
+import { getPlayerWorldPos } from '../core/state.js';
 function usePulsar(){ if(game.abilQ_cd>0) return; // radial shockwave: damage or pushback
   // tuned: larger radius, a bit more push
   const radius = 200;
   const damage = Math.max(1, Math.ceil(game.dmg));
   const mult = game.powerups.twoXT>0? 2:1;
-  forEachEnemy(e=>{ if(!e.active) return; const d = Math.hypot(e.x,e.y); if(d<radius){ e.hp -= damage; if(e.hp<=0){ e.active=false; game.score+=100*mult; game.credits+=1*mult; game.earnedThisWave+=1*mult; } else { const nx=e.x/d, ny=e.y/d; e.x += nx*42; e.y += ny*42; } } });
+  const p = getPlayerWorldPos();
+  forEachEnemy(e=>{ if(!e.active) return; const d = Math.hypot(e.x-p.x,e.y-p.y); if(d<radius){ e.hp -= damage; if(e.hp<=0){ e.active=false; game.score+=100*mult; game.credits+=1*mult; game.earnedThisWave+=1*mult; } else { const nx=(e.x-p.x)/d, ny=(e.y-p.y)/d; e.x += nx*42; e.y += ny*42; } } });
   // clear enemy shots in radius
-  forEachEnemyShot(s=>{ const d = Math.hypot(s.x, s.y); if(d<radius) deactivateEnemyShot(s); });
+  forEachEnemyShot(s=>{ const d = Math.hypot(s.x-p.x, s.y-p.y); if(d<radius) deactivateEnemyShot(s); });
   spawnPulsarFX();
   if(!isMuted()) beep({freq:540, freqEnd:400, type:'triangle', duration:0.09, gain:0.035, attack:0.004, release:0.05});
   game.abilQ_cd = game.abilQ_max;
 }
 function useEmp(){ if(game.abilE_cd>0) return; // forward cone stun/damage
+  const p = getPlayerWorldPos();
   const ang = input.aimAngle; const arc = Math.PI/2.6; const range = 260; // slightly wider and longer
   const damage = Math.max(1, Math.ceil(game.dmg));
   const mult = game.powerups.twoXT>0? 2:1;
-  forEachEnemy(e=>{ if(!e.active) return; const a = Math.atan2(e.y, e.x); let da = Math.atan2(Math.sin(a-ang), Math.cos(a-ang)); if(Math.abs(da)<=arc/2){ const d=Math.hypot(e.x,e.y); if(d<=range){ e.hp -= damage; if(e.hp<=0){ e.active=false; game.score+=100*mult; game.credits+=1*mult; game.earnedThisWave+=1*mult; } else { const nx=e.x/d, ny=e.y/d; e.x += nx*26; e.y += ny*26; } } }});
+  forEachEnemy(e=>{ if(!e.active) return; const a = Math.atan2(e.y-p.y, e.x-p.x); let da = Math.atan2(Math.sin(a-ang), Math.cos(a-ang)); if(Math.abs(da)<=arc/2){ const d=Math.hypot(e.x-p.x,e.y-p.y); if(d<=range){ e.hp -= damage; if(e.hp<=0){ e.active=false; game.score+=100*mult; game.credits+=1*mult; game.earnedThisWave+=1*mult; } else { const nx=(e.x-p.x)/d, ny=(e.y-p.y)/d; e.x += nx*26; e.y += ny*26; } } }});
   // clear enemy shots in cone
-  forEachEnemyShot(s=>{ const a = Math.atan2(s.y, s.x); let da = Math.atan2(Math.sin(a-ang), Math.cos(a-ang)); const d=Math.hypot(s.x,s.y); if(Math.abs(da)<=arc/2 && d<=range){ deactivateEnemyShot(s); } });
+  forEachEnemyShot(s=>{ const a = Math.atan2(s.y-p.y, s.x-p.x); let da = Math.atan2(Math.sin(a-ang), Math.cos(a-ang)); const d=Math.hypot(s.x-p.x,s.y-p.y); if(Math.abs(da)<=arc/2 && d<=range){ deactivateEnemyShot(s); } });
   spawnEmpFX(ang);
   if(!isMuted()) beep({freq:820, freqEnd:720, type:'sawtooth', duration:0.07, gain:0.03, attack:0.002, release:0.04});
   game.abilE_cd = game.abilE_max;

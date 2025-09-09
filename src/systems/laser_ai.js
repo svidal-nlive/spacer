@@ -1,7 +1,7 @@
 // systems/laser_ai.js - autonomous firing logic for turret lasers
 import { spawnLaser } from '../entities/laser.js';
 import { forEachEnemyShot } from '../entities/enemyShot.js';
-import { game } from '../core/state.js';
+import { game, getPlayerWorldPos } from '../core/state.js';
 
 // Fires short laser bursts at a capped fire rate toward nearest enemy shots.
 // Player upgrades (game.dmg) scale laser damage equally.
@@ -13,8 +13,8 @@ export function updateLaserAI(dt){
   let baseRps = 10; // shots per second
   state.cd = Math.max(0, state.cd - dt);
   // pick nearest active enemy shot to center
-  let nearest = null, bestD = Infinity;
-  forEachEnemyShot(s=>{ const d = Math.hypot(s.x, s.y); if(d<bestD){ bestD=d; nearest=s; } });
+  let nearest = null, bestD = Infinity; const p = getPlayerWorldPos();
+  forEachEnemyShot(s=>{ const d = Math.hypot(s.x - p.x, s.y - p.y); if(d<bestD){ bestD=d; nearest=s; } });
   if(!nearest) return;
   if(state.cd===0){
     // Predictive aim: estimate lead angle using shot velocity towards center if available.
@@ -24,8 +24,8 @@ export function updateLaserAI(dt){
     let aimY = nearest.y + targetVy * tLead;
     // Faint jitter to feel alive: tiny angular noise ±2°
     const jitter = (Math.random()*2-1) * (Math.PI/90);
-    const ang = Math.atan2(aimY, aimX) + jitter; // from center to target
-    const muzzle = 24; const mx = Math.cos(ang)*muzzle, my = Math.sin(ang)*muzzle;
+  const ang = Math.atan2(aimY - p.y, aimX - p.x) + jitter; // from player to target
+  const muzzle = 24; const mx = p.x + Math.cos(ang)*muzzle, my = p.y + Math.sin(ang)*muzzle;
     // Fire 1 beam normally; if SPREAD is active, fire double beams with small separation.
     const count = (game.powerups.spreadT>0) ? 2 : 1;
     const sep = 0.08; // radians offset for twin beams

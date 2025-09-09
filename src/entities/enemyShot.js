@@ -1,6 +1,6 @@
 // entities/enemyShot.js - enemy projectiles
 import { canvas, ctx } from '../core/canvas.js';
-import { game } from '../core/state.js';
+import { game, getPlayerWorldPos } from '../core/state.js';
 import { getColdSlowMul } from '../systems/effects.js';
 
 const MAX = 512;
@@ -11,7 +11,8 @@ export function spawnEnemyShot(x,y, ang, speed=220, color='#ffb63b'){
   // Enforce a minimum time-to-impact (fairness): clamp projectile speed by distance
   const slowMul = game.powerups.slowT>0? 0.7:1.0;
   const defaultV = speed*slowMul;
-  const dist = Math.hypot(x, y);
+  const player = getPlayerWorldPos();
+  const dist = Math.hypot(x - player.x, y - player.y);
   const MIN_TTI = 1.25; // seconds; shots should take at least this long to reach center when spawned
   const maxV = dist / MIN_TTI; // cap speed so time-to-impact >= MIN_TTI
   const v = Math.min(defaultV, maxV);
@@ -34,8 +35,9 @@ export function updateEnemyShots(dt){
   const mul = getColdSlowMul(s.x, s.y);
   if(mul < 1){ s.vx *= mul; s.vy *= mul; }
     // collide with player
-    const PLAYER_R = 22;
-    const d = Math.hypot(s.x, s.y);
+  const PLAYER_R = 22;
+  const p = getPlayerWorldPos();
+  const d = Math.hypot(s.x - p.x, s.y - p.y);
   if(d <= PLAYER_R + s.r){
       s.active=false;
       // If currently invulnerable, ignore damage entirely

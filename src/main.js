@@ -9,6 +9,7 @@ import { setScene, update as sceneUpdate, render as sceneRender, getScene } from
 import { waveScene } from './scenes/wave.js';
 import { shopScene } from './scenes/shop.js';
 import { uiButtons } from './ui/buttons.js';
+import { setScene as goScene } from './engine/sceneManager.js';
 
 // simple UI bar clicks
 // load persisted UI prefs
@@ -26,6 +27,7 @@ try{
   if(params.get('grid')==='1') { game.showAutoGrid = true; }
   if(params.get('laser')==='0') { game.laserEnabled = false; }
   if(params.get('devShop')==='1') { setScene(shopScene); }
+  if(params.get('dev')==='1') { game.devMode = true; }
 }catch{ /* no-op */ }
 window.addEventListener('keydown', (e)=>{
   if(e.key==='m') toggleMute();
@@ -96,7 +98,7 @@ function showPlayOverlay(){
   // on-screen secondary hold button
   const startHold = ()=> inputSecondaryHold(true);
   const stopHold = ()=> inputSecondaryHold(false);
-  uiButtons.show([
+  const buttons = [
     { label:'Q', title:'Pulsar (Q)', onClick: triggerQ },
     { label:'E', title:'EMP (E)', onClick: triggerE },
     { label: game.laserEnabled? 'Lsr':'Lsr', title:'Toggle Laser (P)', onClick: toggleLaser },
@@ -104,7 +106,9 @@ function showPlayOverlay(){
     { label:'AUTO', title:'Dev Auto-Fire Toggle', onClick: toggleAuto, variant:'pill' },
     { label:'⎍', title:'Secondary Hold (O)', onClick: ()=>{}, onDown:startHold, onUp:stopHold },
     { label:'⚙', title:'Settings', onClick: ()=>{ game.settingsOpen = !game.settingsOpen; showSettingsOverlay(); } },
-  ], { position: computeOverlayPosition() });
+  ];
+  if(game.devMode){ buttons.push({ label:'Dev', title:'Developer Tools', onClick: ()=> showDevOverlay(), variant:'pill' }); }
+  uiButtons.show(buttons, { position: computeOverlayPosition() });
   if(game.settingsOpen) showSettingsOverlay();
 }
 
@@ -114,13 +118,35 @@ function showSettingsOverlay(){
   const decRange = ()=>{ game.autoRange = Math.max(80, Math.round(game.autoRange - 20)); save('autoRange', game.autoRange); showSettingsOverlay(); };
   const incRange = ()=>{ game.autoRange = Math.min(600, Math.round(game.autoRange + 20)); save('autoRange', game.autoRange); showSettingsOverlay(); };
   const toggleGrid = ()=>{ game.showAutoGrid = !game.showAutoGrid; save('showAutoGrid', game.showAutoGrid); showSettingsOverlay(); };
+  const devMenu = ()=>{ showDevOverlay(); };
   uiButtons.show([
     { label:'—', title:'Range -', onClick: decRange },
     { label:`${game.autoRange}px`, title:'AUTO Range', onClick: ()=>{} , variant:'pill' },
     { label:'+', title:'Range +', onClick: incRange },
     { label: game.showAutoGrid? 'Grid✓':'Grid', title:'Toggle AUTO Grid', onClick: toggleGrid, variant:'pill' },
+    ...(game.devMode? [{ label:'Dev', title:'Developer Tools', onClick: devMenu, variant:'pill' }]: []),
     { label:'Close', title:'Close Settings', onClick: close, variant:'pill' },
   ], { position:'bottom-right', caption:'Settings — AUTO' });
+}
+
+// Dev overlay: fast wave jump and quick toggles
+function showDevOverlay(){
+  const back = ()=> showSettingsOverlay();
+  // wave jump helpers
+  const setWave = (w)=>{ game.wave = Math.max(1, Math.floor(w)); goScene(waveScene); window.dispatchEvent(new CustomEvent('spacer:show-ui', { detail:{ type:'play' } })); };
+  const minus10 = ()=> setWave(game.wave - 10);
+  const minus1 = ()=> setWave(game.wave - 1);
+  const plus1 = ()=> setWave(game.wave + 1);
+  const plus10 = ()=> setWave(game.wave + 10);
+  uiButtons.show([
+    { label:'-10', title:'Wave -10', onClick: minus10 },
+    { label:'-1', title:'Wave -1', onClick: minus1 },
+    { label:`Wave ${game.wave}`, title:'Current Wave', onClick: ()=>{}, variant:'pill' },
+    { label:'+1', title:'Wave +1', onClick: plus1 },
+    { label:'+10', title:'Wave +10', onClick: plus10 },
+    { label:'Boss', title:'Next Boss Wave', onClick: ()=>{ const w = game.wave; const nextBoss = (Math.floor((w-1)/5)+1)*5; setWave(nextBoss); }, variant:'pill' },
+    { label:'Back', title:'Back', onClick: back, variant:'pill' },
+  ], { position:'bottom-right', caption:'Dev — Wave Jump' });
 }
 
 function showShopOverlay(){
