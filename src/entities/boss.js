@@ -1,7 +1,7 @@
 // entities/boss.js — Boss System scaffolding (The Overseer)
 import { game } from '../core/state.js';
 import { spawnEnemyShot, spawnRadialShots } from './enemyShot.js';
-import { spawnEnemyDeathFX } from '../systems/effects.js';
+import { spawnEnemyDeathFX, getBossBarrierWorldY } from '../systems/effects.js';
 import { beep, isMuted } from '../core/audio.js';
 import { spawnEnemyAt } from './enemy.js';
 
@@ -19,7 +19,9 @@ export const boss = {
 };
 
 export function spawnBoss(){
-  boss.active = true; boss.name = 'The Overseer'; boss.x = 0; boss.y = -220; boss.r = 36;
+  boss.active = true; boss.name = 'The Overseer'; boss.x = 0; boss.r = 36;
+  // Place boss just below barrier for visibility during top-down intro
+  try { const yBar = getBossBarrierWorldY(); boss.y = yBar + 60; } catch { boss.y = -200; }
   const w = Math.max(1, game.wave||1);
   boss.maxHp = 60 + (w-1)*20;
   boss.hp = boss.maxHp;
@@ -35,9 +37,15 @@ export function updateBoss(dt){ if(!boss.active) return; boss.t += dt;
   if(hpPct <= 0.6) boss.phase = 2;
   if(hpPct <= 0.3) boss.phase = 3;
 
-  // simple hover motion
+  // simple hover motion (clamped below barrier in topdown to stay visible)
   boss.x = Math.sin(boss.t*0.6) * 120;
   boss.y = -200 + Math.cos(boss.t*0.5) * 20;
+  if(game.arenaMode==='topdown'){
+    // Ensure boss remains below barrier line by a small margin
+    const yBar = getBossBarrierWorldY();
+    const margin = 24; // px
+    if(boss.y < yBar + margin) boss.y = yBar + margin;
+  }
 
   // attacks
   // Spiral volleys: frequent, but in the top-down concept we swap to minion volleys

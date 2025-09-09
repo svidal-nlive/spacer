@@ -50,10 +50,12 @@ export const waveScene = {
     this.autoAbilityCd = 0;
   // If boss wave, kick off cinematic immediately so it’s apparent
   if(isBossWave()){
-    triggerLetterboxIn(0.8); enableBossBarrier(); game.arenaMode='topdown';
-    // Pre-position player below barrier so camera shift is evident
-    const yScreen = getBossBarrierScreenY();
-    game.player.y = (yScreen - (canvas.height*0.5)) + 10; game.player.targetY = game.player.y;
+  triggerLetterboxIn(0.8); enableBossBarrier(); game.arenaMode='topdown';
+  // Pre-position player below barrier so camera shift is evident (consider letterbox offset)
+  const dpr = window.devicePixelRatio || 1;
+  const yScreen = getBossBarrierScreenY(); // CSS px
+  // Convert to device px to match world render offset scale
+  game.player.y = (yScreen*dpr - (canvas.height*0.5)) + 40; game.player.targetY = game.player.y;
     this.state = 'bossIntro'; this.stateT = 0;
   }
   },
@@ -228,10 +230,11 @@ export const waveScene = {
   if(game.lives<=0){ setScene(gameOverScene); return; }
     // Update player target render offset per arena mode
     if(game.arenaMode==='topdown'){
-      // Place turret 10px below the barrier line (now aligned to top of playable area)
-      const yScreen = getBossBarrierScreenY();
-      const offsetFromCenter = yScreen - (canvas.height * 0.5);
-      game.player.targetY = offsetFromCenter + 10;
+      // Place turret a bit below the barrier line (account for DPR)
+      const dpr2 = window.devicePixelRatio || 1;
+      const yScreen = getBossBarrierScreenY(); // CSS px
+      const offsetFromCenter = (yScreen*dpr2) - (canvas.height * 0.5);
+      game.player.targetY = offsetFromCenter + 40;
     } else {
       // Return to center in ring mode
       game.player.targetY = 0;

@@ -111,7 +111,15 @@ export function drawBossBar(name, hp, maxHp){
   const dpr = window.devicePixelRatio || 1; const PAD = 12; const TOPBAR_H = 32; const GAP = 8;
   const wCSS = canvas.width/dpr; const barW = Math.min(420, wCSS - PAD*2); const barH = 10;
   // nudge down slightly on very short screens to avoid crowding
-  const x = (wCSS - barW)/2; const y = PAD + TOPBAR_H + (window.innerHeight<=700? GAP*0.5 : GAP);
+  const x = (wCSS - barW)/2;
+  // account for letterbox top height (CSS px) so bar is not hidden
+  let letterboxTopCSS = 0;
+  try {
+    const hCSS = canvas.height/dpr;
+    const k = (window?.spacerLetterboxK ?? 0);
+    letterboxTopCSS = Math.round(hCSS * 0.14 * k);
+  } catch {}
+  const y = letterboxTopCSS + PAD + TOPBAR_H + (window.innerHeight<=700? GAP*0.5 : GAP);
   const pct = Math.max(0, Math.min(1, hp/maxHp));
   ctx.save(); ctx.resetTransform(); ctx.scale(dpr,dpr);
   ctx.fillStyle = 'rgba(10,13,18,0.9)'; ctx.fillRect(x, y, barW, barH);

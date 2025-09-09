@@ -41,6 +41,8 @@ export function updateEffects(dt){
     if (letterbox.t >= 1) { letterbox.t = 1; if (letterbox.dir > 0) { letterbox.dir = 0; } }
     if (letterbox.t <= 0) { letterbox.t = 0; letterbox.active = false; letterbox.dir = 0; }
   }
+  // expose letterbox progress for UI placement (avoid import cross-deps)
+  try { window.spacerLetterboxK = easeOutCubic(clamp01(letterbox.t)); } catch {}
   // barrier shimmer
   if (bossBarrier.enabled) bossBarrier.pulse = (bossBarrier.pulse + dt * 2.0) % 1.0;
 }
@@ -199,15 +201,24 @@ export function isLetterboxActive(){ return letterbox.active || letterbox.t > 0;
 export function enableBossBarrier(yPx){ bossBarrier.enabled = true; bossBarrier.y = yPx || 0; }
 export function disableBossBarrier(){ bossBarrier.enabled = false; }
 export function getBossBarrierScreenY(){
-  // Prefer explicit y; otherwise align to top of playable area
+  // Prefer explicit y (CSS px); otherwise align to the top of the playable area plus any active letterbox top bar height (also CSS px)
   if (bossBarrier.y) return bossBarrier.y;
-  try { const pb = getPlayableScreenBounds(); return pb.y; } catch { return ctx.canvas.height * 0.5; }
+  try {
+    const dpr = (window && window.devicePixelRatio) || 1;
+    const pb = getPlayableScreenBounds(); // CSS px rect
+    const hCSS = ctx.canvas.height / dpr;
+    const k = (letterbox.active || letterbox.t > 0) ? easeOutCubic(clamp01(letterbox.t)) : 0;
+    const letterboxTopCSS = Math.round(hCSS * 0.14 * k);
+    return pb.y + letterboxTopCSS;
+  } catch {
+    return (ctx.canvas.height / ((window && window.devicePixelRatio) || 1)) * 0.5;
+  }
 }
 export function getBossBarrierWorldY(){
-  // Adjust by the current world vertical offset (player render offset) so world-space queries
-  // align with the screen-space barrier when the world is shifted during top-down mode.
-  const worldOffsetY = (game && game.player && typeof game.player.y === 'number') ? game.player.y : 0;
-  return getBossBarrierScreenY() - (ctx.canvas.height * 0.5) - worldOffsetY;
+  // Convert barrier screen Y (CSS px) to device px, then subtract canvas center and world render offset (both device px)
+  const dpr = (window && window.devicePixelRatio) || 1;
+  const worldOffsetY = (game && game.player && typeof game.player.y === 'number') ? game.player.y : 0; // device px
+  return (getBossBarrierScreenY() * dpr) - (ctx.canvas.height * 0.5) - worldOffsetY;
 }
 
 // small helpers
