@@ -66,9 +66,10 @@ export const waveScene = {
     const prevQ = game.abilQ_cd; const prevE = game.abilE_cd;
     game.abilQ_cd = Math.max(0, game.abilQ_cd - dt);
     game.abilE_cd = Math.max(0, game.abilE_cd - dt);
-  if(prevQ>0 && game.abilQ_cd===0){ game.readyFlashQ = 0.8; game.screenFlash = 0.5; game.screenFlashColor = '#25d0ff'; }
+  // On ability ready, trigger a subtle, graceful flash (softer than damage/bomb)
+  if(prevQ>0 && game.abilQ_cd===0){ game.readyFlashQ = 0.8; game.screenFlash = Math.max(game.screenFlash, 0.18); game.screenFlashColor = '#25d0ff'; }
   else game.readyFlashQ = Math.max(0, game.readyFlashQ - dt);
-  if(prevE>0 && game.abilE_cd===0){ game.readyFlashE = 0.8; game.screenFlash = 0.5; game.screenFlashColor = '#ffb63b'; }
+  if(prevE>0 && game.abilE_cd===0){ game.readyFlashE = 0.8; game.screenFlash = Math.max(game.screenFlash, 0.18); game.screenFlashColor = '#ffb63b'; }
   else game.readyFlashE = Math.max(0, game.readyFlashE - dt);
   game.screenFlash = Math.max(0, game.screenFlash - dt*0.9);
   // on-hit invulnerability decay
@@ -548,15 +549,26 @@ function triggerBomb(){
 function drawScreenEdgeFlash(){
   if(game.screenFlash<=0) return;
   const dpr = window.devicePixelRatio || 1;
-  const w = canvas.width/dpr, h = canvas.height/dpr; const a = Math.min(0.4, game.screenFlash);
+  const w = canvas.width/dpr, h = canvas.height/dpr;
+  const isDamage = game.screenFlashColor === '#ff6b6b'; // strong red flash for damage/bomb
+  // Softer cap and thinner band for ability-ready flashes; stronger for damage
+  const cap = isDamage ? 0.45 : 0.18;
+  const a = Math.min(cap, game.screenFlash);
+  if(a <= 0.001) return;
   ctx.save(); ctx.resetTransform(); ctx.scale(dpr,dpr);
+  // thickness scales gently; abilities use a thinner band
+  const baseThick = isDamage ? 24 : 12;
+  const thick = baseThick;
   // four sides with linear gradients
   const sides = [
-    {x:0,y:0,w, h:24, dir:'down'},       // top
-    {x:0,y:h-24,w, h:24, dir:'up'},      // bottom
-    {x:0,y:0,w:24,h, dir:'right'},       // left
-    {x:w-24,y:0,w:24,h, dir:'left'},     // right
+    {x:0,y:0,w, h:thick, dir:'down'},       // top
+    {x:0,y:h-thick,w, h:thick, dir:'up'},   // bottom
+    {x:0,y:0,w:thick,h, dir:'right'},       // left
+    {x:w-thick,y:0,w:thick,h, dir:'left'},  // right
   ];
+  // Use lighter blend for ability flashes to feel graceful; normal for damage
+  const prevComp = ctx.globalCompositeOperation;
+  if(!isDamage) ctx.globalCompositeOperation = 'screen';
   for(const s of sides){
     let g;
     if(s.dir==='down'){ g = ctx.createLinearGradient(0,0,0,s.h); g.addColorStop(0, `${game.screenFlashColor}${alphaHex(a)}`); g.addColorStop(1, `${game.screenFlashColor}00`); }
@@ -565,6 +577,17 @@ function drawScreenEdgeFlash(){
     if(s.dir==='left'){ g = ctx.createLinearGradient(0,0,s.w,0); g.addColorStop(0, `${game.screenFlashColor}00`); g.addColorStop(1, `${game.screenFlashColor}${alphaHex(a)}`); }
     ctx.fillStyle = g; ctx.fillRect(s.x, s.y, s.w, s.h);
   }
+  // Add a faint center bloom for ability flashes for a smoother feel
+  if(!isDamage){
+    const cx = w/2, cy = h/2;
+    const rMax = Math.min(w,h) * 0.45;
+    const rg = ctx.createRadialGradient(cx, cy, rMax*0.1, cx, cy, rMax);
+    const softA = Math.min(0.08, a * 0.5);
+    rg.addColorStop(0, `${game.screenFlashColor}${alphaHex(softA)}`);
+    rg.addColorStop(1, `${game.screenFlashColor}00`);
+    ctx.fillStyle = rg; ctx.beginPath(); ctx.rect(0,0,w,h); ctx.fill();
+  }
+  ctx.globalCompositeOperation = prevComp;
   ctx.restore();
 }
 

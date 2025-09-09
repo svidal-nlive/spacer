@@ -185,7 +185,7 @@ function showShopOverlay(){
   { label:'R', title:'Reroll (R)', onClick: reroll, testid:'btn-reroll' },
   { label:'L', title:'Toggle Lock (L)', onClick: lock, testid:'btn-lock' },
   { label:'Skip', title:'Skip (Space)', onClick: skip, variant:'pill', testid:'btn-skip' },
-  ], { position: 'bottom-left', caption: 'Shop Controls' });
+  ], { position: 'bottom-left' });
 }
 
 function showGameOverOverlay(){

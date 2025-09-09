@@ -89,11 +89,13 @@ export const shopScene = {
       // track bottom of last card actually drawn
       if(y + h > cardsBottom) cardsBottom = y + h;
     });
-    // utilities
-    // place strictly below the last drawn card to avoid overlap
-    const uy = cardsBottom + (narrow ? 20 : 40);
-    ctx.fillStyle='#b7f3ff'; ctx.font=`${smallSize}px system-ui,sans-serif`;
-    wrapText(ctx, '[R] Reroll (10)    [L] Toggle Lock on hover    [Space] Skip', 20, uy, wCSS - 40, smallSize + 6);
+  // utilities (light, subtle hint line below cards)
+  const uy = cardsBottom + (narrow ? 20 : 40);
+  ctx.save();
+  ctx.globalAlpha = 0.65;
+  ctx.fillStyle='#7e9cb0'; ctx.font=`${Math.max(11, smallSize-1)}px system-ui,sans-serif`;
+  wrapText(ctx, '[R] Reroll (10)    [L] Toggle Lock on hover    [Space] Skip', 20, uy, wCSS - 40, (smallSize + 6) - 2);
+  ctx.restore();
   }
 };
 
