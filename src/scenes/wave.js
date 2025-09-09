@@ -11,6 +11,8 @@ import { handleBulletEnemyShotCollisions } from '../systems/bullet_vs_enemyShot.
 import { updateLasers, drawLasers, handleLaserEnemyShotCollisions } from '../entities/laser.js';
 import { updateLaserAI, resetLaserAI } from '../systems/laser_ai.js';
 import { drawTopBar, drawHeatRing, drawBossBar } from '../ui/hud.js';
+import { getUiGuttersPx } from '../core/uiBounds.js';
+import { getPlayableScreenBounds } from '../core/uiBounds.js';
 import { setScene } from '../engine/sceneManager.js';
 import { shopScene } from './shop.js';
 import { gameOverScene } from './gameover.js';
@@ -140,12 +142,32 @@ export const waveScene = {
         if(wv>=4 && r<0.15) type='tank';
         // spawn from a random screen edge
         const dpr = window.devicePixelRatio || 1; const wpx = canvas.width/dpr, hpx = canvas.height/dpr;
+        // Avoid spawning into UI gutters by using playable bounds for edge selection
+        const pb = getPlayableScreenBounds();
         const side = Math.floor(Math.random()*4); // 0=top,1=right,2=bottom,3=left
         let x=0,y=0; const pad=24;
-        if(side===0){ x = (Math.random()* (wpx-2*pad)) - (wpx/2 - pad); y = -(hpx/2 + pad); }
-        if(side===1){ x =  (wpx/2 + pad); y = (Math.random()* (hpx-2*pad)) - (hpx/2 - pad); }
-        if(side===2){ x = (Math.random()* (wpx-2*pad)) - (wpx/2 - pad); y =  (hpx/2 + pad); }
-        if(side===3){ x = -(wpx/2 + pad); y = (Math.random()* (hpx-2*pad)) - (hpx/2 - pad); }
+        // Compute world spawn positions by mapping playable bounds extents back to world-centered coordinates
+        const leftX = -wpx/2, rightX = wpx/2, topY = -hpx/2, botY = hpx/2;
+        const playTopY = topY + pb.y; // screen px to world y
+        const playBotY = topY + pb.y + pb.height;
+        const playLeftX = leftX + pb.x; // pb.x currently 0, but keep for future left gutters
+        const playRightX = leftX + pb.x + pb.width;
+        if(side===0){ // top: along playable top edge
+          const sx = (Math.random() * (playRightX - playLeftX - 2*pad)) + (playLeftX + pad);
+          x = sx; y = topY - pad; // just beyond screen
+        }
+        if(side===1){ // right: along playable vertical span
+          const sy = (Math.random() * (playBotY - playTopY - 2*pad)) + (playTopY + pad);
+          x = rightX + pad; y = sy;
+        }
+        if(side===2){ // bottom: along playable bottom edge
+          const sx = (Math.random() * (playRightX - playLeftX - 2*pad)) + (playLeftX + pad);
+          x = sx; y = botY + pad;
+        }
+        if(side===3){ // left
+          const sy = (Math.random() * (playBotY - playTopY - 2*pad)) + (playTopY + pad);
+          x = leftX - pad; y = sy;
+        }
         const e = spawnEnemyAt(x, y, type);
         if(e){ this.spawned += e.quota; }
         this.enemySpawnT = Math.max(0.2, 1.2 - game.wave*0.05);
@@ -205,7 +227,7 @@ export const waveScene = {
   if(game.lives<=0){ setScene(gameOverScene); return; }
     // Update player target render offset per arena mode
     if(game.arenaMode==='topdown'){
-      // Place turret 10px below the barrier line (compute offset from screen center)
+      // Place turret 10px below the barrier line (now aligned to top of playable area)
       const yScreen = getBossBarrierScreenY();
       const offsetFromCenter = yScreen - (canvas.height * 0.5);
       game.player.targetY = offsetFromCenter + 10;
@@ -218,9 +240,13 @@ export const waveScene = {
     ctx.clearRect(0,0,canvas.width,canvas.height);
     // subtle camera zoom cadence based on heat and enemy pressure
     const dpr = window.devicePixelRatio || 1;
+  const pb = getPlayableScreenBounds();
+  const wCSS = canvas.width/dpr, hCSS = canvas.height/dpr;
     const pressure = Math.min(1, (game.heat/game.heatMax)*0.7 + 0.3);
     this.camZoom += (1 + 0.02*pressure - this.camZoom) * 0.08; // ease
-    const cx = canvas.width/2, cy = canvas.height/2;
+  // center of playable area in CSS px
+  const cx = (pb.x + pb.width/2) * dpr;
+  const cy = (pb.y + pb.height/2) * dpr;
   ctx.save();
   // Use DPR-aware world transform for all world elements (fixes tiny/hidden turret on mobile)
   // Smoothly ease player render offset to target
@@ -254,7 +280,8 @@ export const waveScene = {
   // VFX + enemy shots
   drawEffects(); drawEnemyShots(); drawLasers();
   ctx.restore();
-  drawHeatRing(canvas.width/2, canvas.height/2 + game.player.y, 30, game.heat/game.heatMax);
+  // Heat ring at the playable center respecting render offset
+  drawHeatRing((pb.x + pb.width/2) * dpr, (pb.y + pb.height/2) * dpr + game.player.y, 30, game.heat/game.heatMax);
   // top bar with ability chips
   // compute a fade alpha for 2x badge: ease in first 0.5s, ease out last 0.5s
   let twoXAlpha = 0;
@@ -344,7 +371,8 @@ function drawAbilityChips(){
 
 // Draw near-turret radial cooldown arcs and on-screen button tips
 function drawAbilityTurretIndicators(){
-  const cx = canvas.width/2, cy = canvas.height/2; const r = 40;
+  const dpr = window.devicePixelRatio || 1; const pb = getPlayableScreenBounds();
+  const cx = (pb.x + pb.width/2) * dpr, cy = (pb.y + pb.height/2) * dpr; const r = 40;
   ctx.save();
   // Q arc (left)
   const qPct = game.abilQ_cd>0 ? 1 - (game.abilQ_cd/game.abilQ_max) : 1;
@@ -378,18 +406,22 @@ function drawAbilityUI(){
 
 function drawAbilityBars(){
   const dpr = window.devicePixelRatio || 1; ctx.save(); ctx.resetTransform(); ctx.scale(dpr,dpr);
-  const PAD = 12, TOPBAR_H = 32, GAP = 8; const wCSS = canvas.width/dpr, hCSS = canvas.height/dpr; const barW = 120, barH = 6;
-  let x = PAD;
-  // top/bottom baselines factoring in top bar height
-  const yTop = PAD + TOPBAR_H + GAP;
-  const yBottom = hCSS - PAD - barH;
-  let y = yBottom;
+  const PAD = 12; const GAPB = 6;
+  // compute a responsive bar width
+  const wCSS = canvas.width/dpr; const gutters = getUiGuttersPx();
+  const maxBarW = 140; const minBarW = 100;
+  const barW = Math.max(minBarW, Math.min(maxBarW, Math.floor(wCSS * 0.35)));
+  const barH = 6;
+  // Anchor inside the bottom gutter by default (keeps UI off the playfield)
+  const yStart = (canvas.height/dpr) - (gutters.bottom || 0);
+  const topStart = gutters.top || 0;
+  // Corner selection chooses left/right and top/bottom gutter
   const corner = game.abilityUiCorner;
-  if(corner.includes('right')) x = wCSS - PAD - barW;
-  if(corner.includes('top')) y = yTop; // leave room for top bar consistently
+  let x = corner.includes('right') ? (wCSS - PAD - barW) : PAD;
+  let yBase = corner.includes('top') ? (topStart + PAD) : (yStart + PAD);
   // Q on top, E below
-  drawCooldownBar(x, y, barW, barH, 1 - (game.abilQ_cd>0? game.abilQ_cd/game.abilQ_max : 0), '#25d0ff', game.readyFlashQ);
-  drawCooldownBar(x, y + barH + 6, barW, barH, 1 - (game.abilE_cd>0? game.abilE_cd/game.abilE_max : 0), '#ffb63b', game.readyFlashE);
+  drawCooldownBar(x, yBase, barW, barH, 1 - (game.abilQ_cd>0? game.abilQ_cd/game.abilQ_max : 0), '#25d0ff', game.readyFlashQ);
+  drawCooldownBar(x, yBase + barH + GAPB, barW, barH, 1 - (game.abilE_cd>0? game.abilE_cd/game.abilE_max : 0), '#ffb63b', game.readyFlashE);
   ctx.restore();
 }
 
@@ -403,7 +435,8 @@ function drawCooldownBar(x,y,w,h,pct,color,flash){
 }
 
 function drawAbilityRings(){
-  const cx = canvas.width/2, cy = canvas.height/2 + game.player.y; const dpr = window.devicePixelRatio || 1; ctx.save(); ctx.setTransform(dpr,0,0,dpr,0,0);
+  const dpr = window.devicePixelRatio || 1; const pb = getPlayableScreenBounds();
+  const cx = (pb.x + pb.width/2) * dpr, cy = (pb.y + pb.height/2) * dpr + game.player.y; ctx.save(); ctx.setTransform(dpr,0,0,dpr,0,0);
   // draw two thin rings around the heat ring radius
   const baseR = 38; const r1 = baseR + 10, r2 = baseR + 16;
   const pQ = 1 - (game.abilQ_cd>0? game.abilQ_cd/game.abilQ_max : 0);
@@ -424,31 +457,19 @@ function ringProgress(cx, cy, r, pct, color, flash){
 function drawPowerupBadges(){
   // show small badges for active powerups with a tiny timer bar
   const dpr = window.devicePixelRatio || 1; ctx.save(); ctx.resetTransform(); ctx.scale(dpr,dpr);
-  const wCSS = canvas.width/dpr, hCSS = canvas.height/dpr; const PAD = 12, TOPBAR_H = 32, GAP = 8; const size = 14; const bw = 64; const barH = 6;
+  const PAD = 12, GAP = 8; const size = 14; const bw = 64; const barH = 6;
+  const gutters = getUiGuttersPx();
+  const wCSS = canvas.width/dpr;
   // container width from left edge of glyph circle to end of timer bar
   const containerW = size + 10 + bw; // circle diameter + gap + bar width
   const listRows = 5; const rowH = 16; const listH = listRows * rowH;
   let x, y;
-  if(game.abilityUiMode==='corner'){
-    // Position badges relative to ability bars to avoid overlap
-    const corner = game.abilityUiCorner; const right = corner.includes('right'); const top = corner.includes('top');
-    // ability bars reference positions
-    const abilityX = right? (wCSS - PAD - 120) : PAD; // 120 = barW
-    const abilityY = top? (PAD + TOPBAR_H + GAP) : (hCSS - PAD - barH);
-    const barsH = barH + 6 + barH; // two bars + gap
-    if(top){
-      // place badges below ability bars
-      y = abilityY + barsH + GAP + size/2;
-    } else {
-      // place badges above ability bars
-      y = abilityY - GAP - listH + size/2;
-    }
-    x = right? (wCSS - PAD - containerW + size/2) : (PAD + size/2);
-  } else {
-    // ring mode: anchor to top-right under top bar with consistent padding
-    x = wCSS - PAD - containerW + size/2;
-    y = PAD + TOPBAR_H + GAP + size/2;
-  }
+  const corner = game.abilityUiCorner; const right = corner.includes('right'); const top = corner.includes('top');
+  const yStart = (canvas.height/dpr) - (gutters.bottom || 0);
+  const topStart = gutters.top || 0;
+  // Anchor to the same gutter as ability bars, on the opposite horizontal edge for balance
+  y = (top ? topStart : yStart) + PAD + size/2;
+  x = right ? (wCSS - PAD - containerW + size/2) : (PAD + size/2);
   const items = [
     {key:'rapidT', ch:'R', col:'#25d0ff', max:15, stackKey:'rapid'},
     {key:'spreadT', ch:'S', col:'#7dd3fc', max:15, stackKey:'spread'},

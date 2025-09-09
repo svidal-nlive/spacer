@@ -24,23 +24,28 @@ function ensureContainer(){
   document.body.appendChild(el);
   // responsive: collapse or enlarge based on viewport
   const applySize = ()=>{
-    const vw = Math.min(window.innerWidth, window.innerHeight);
-    const base = vw<=480? 50 : vw<=768? 46 : 42;
+  const vw = Math.min(window.innerWidth, window.innerHeight);
+  // Tighter sizes on very small screens to avoid crowding the playfield
+  const base = vw<=360? 40 : vw<=420? 46 : vw<=768? 48 : 44;
     el.querySelectorAll('button').forEach(btn=>{
       const v = btn.dataset.variant;
       if(v === 'wide') return; // keep custom-sized buttons intact
       if(v === 'pill'){
-        btn.style.height = base+'px';
-        btn.style.minWidth = Math.round(base*1.6)+'px';
-        btn.style.padding = '0 12px';
-        btn.style.fontSize = (base*0.40)+'px';
-        btn.style.borderRadius = (base*0.28)+'px';
+    btn.style.height = base+'px';
+    btn.style.minWidth = Math.round(base*1.4)+'px';
+    btn.style.padding = '0 12px';
+    btn.style.fontSize = (base*0.40)+'px';
+    btn.style.borderRadius = (base*0.28)+'px';
         return;
       }
       btn.style.width = btn.style.height = base+'px';
       btn.style.fontSize = (base*0.42)+'px';
       btn.style.borderRadius = (base*0.24)+'px';
     });
+  // If too wide, prefer wrapping into two rows
+  el.style.flexWrap = 'wrap';
+  // Reduce inter-button gap slightly on very small screens
+  el.style.gap = (vw<=360? 6 : 10) + 'px';
   };
   const ro = new ResizeObserver(applySize); ro.observe(document.documentElement);
   el._applySize = applySize;

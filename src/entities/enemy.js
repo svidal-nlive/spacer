@@ -5,6 +5,8 @@ import { spawnPickup } from './pickup.js';
 import { spawnEnemyDeathFX } from '../systems/effects.js';
 import { maybeAffixElite, handleEliteOnDeath, drawEliteName } from './elite.js';
 import { getColdSlowMul, getBossBarrierWorldY } from '../systems/effects.js';
+import { canvas } from '../core/canvas.js';
+import { getPlayableScreenBounds } from '../core/uiBounds.js';
 import { beep, isMuted } from '../core/audio.js';
 import { spawnEnemyShot } from './enemyShot.js';
 const MAX = 256;
@@ -65,6 +67,17 @@ export function updateEnemies(dt){
       if(e.y > yBar - soft){
         e.y = yBar - soft;
       }
+    }
+    // Keep enemies within playable vertical bounds (avoid UI gutters)
+    {
+      const dpr = window.devicePixelRatio || 1;
+      const pb = getPlayableScreenBounds();
+      const hCSS = canvas.height / dpr;
+      const topY = -(hCSS/2) + pb.y; // screen->world
+      const botY = topY + pb.height;
+      const soft = 6;
+      if(e.y < topY + soft) e.y = topY + soft;
+      if(e.y > botY - soft) e.y = botY - soft;
     }
     // firing with simple telegraph
     e.fireT -= dt;

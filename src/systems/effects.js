@@ -1,5 +1,6 @@
 // systems/effects.js - transient visual effects (pulsar ring, emp cone)
 import { ctx } from '../core/canvas.js';
+import { getPlayableScreenBounds } from '../core/uiBounds.js';
 import { game } from '../core/state.js';
 
 const rings = []; // {t:0..1, r0, r1}
@@ -156,7 +157,9 @@ export function drawEffects(){
   }
   // Boss barrier at mid-screen (or custom y)
   if (bossBarrier.enabled) {
-    const y = bossBarrier.y || (h * 0.5);
+    // Place barrier at explicit y if set; otherwise align to top of playable area
+    let y = bossBarrier.y;
+    if(!y){ const pb = getPlayableScreenBounds(); y = pb.y; }
     ctx.save(); ctx.setTransform(1,0,0,1,0,0);
     const glow = 0.35 + 0.25 * Math.sin(bossBarrier.pulse * Math.PI * 2);
     ctx.strokeStyle = `rgba(141, 210, 255, ${glow})`;
@@ -195,7 +198,11 @@ export function isLetterboxActive(){ return letterbox.active || letterbox.t > 0;
 // Boss barrier controls
 export function enableBossBarrier(yPx){ bossBarrier.enabled = true; bossBarrier.y = yPx || 0; }
 export function disableBossBarrier(){ bossBarrier.enabled = false; }
-export function getBossBarrierScreenY(){ return bossBarrier.y || (ctx.canvas.height * 0.5); }
+export function getBossBarrierScreenY(){
+  // Prefer explicit y; otherwise align to top of playable area
+  if (bossBarrier.y) return bossBarrier.y;
+  try { const pb = getPlayableScreenBounds(); return pb.y; } catch { return ctx.canvas.height * 0.5; }
+}
 export function getBossBarrierWorldY(){
   // Adjust by the current world vertical offset (player render offset) so world-space queries
   // align with the screen-space barrier when the world is shifted during top-down mode.
