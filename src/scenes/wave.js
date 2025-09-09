@@ -416,8 +416,8 @@ function drawAbilityBars(){
   const yStart = (canvas.height/dpr) - (gutters.bottom || 0);
   const topStart = gutters.top || 0;
   // Corner selection chooses left/right and top/bottom gutter
-  const corner = game.abilityUiCorner;
-  let x = corner.includes('right') ? (wCSS - PAD - barW) : PAD;
+  const corner = 'top-right'; // force right side placement for clarity
+  let x = (wCSS - PAD - barW);
   let yBase = corner.includes('top') ? (topStart + PAD) : (yStart + PAD);
   // Q on top, E below
   drawCooldownBar(x, yBase, barW, barH, 1 - (game.abilQ_cd>0? game.abilQ_cd/game.abilQ_max : 0), '#25d0ff', game.readyFlashQ);
@@ -464,12 +464,13 @@ function drawPowerupBadges(){
   const containerW = size + 10 + bw; // circle diameter + gap + bar width
   const listRows = 5; const rowH = 16; const listH = listRows * rowH;
   let x, y;
-  const corner = game.abilityUiCorner; const right = corner.includes('right'); const top = corner.includes('top');
+  const corner = 'top-right'; const right = true; const top = true;
   const yStart = (canvas.height/dpr) - (gutters.bottom || 0);
   const topStart = gutters.top || 0;
   // Anchor to the same gutter as ability bars, on the opposite horizontal edge for balance
   y = (top ? topStart : yStart) + PAD + size/2;
-  x = right ? (wCSS - PAD - containerW + size/2) : (PAD + size/2);
+  // place badges on the opposite side from ability bars to avoid overlap
+  x = right ? (PAD + size/2) : (wCSS - PAD - containerW + size/2);
   const items = [
     {key:'rapidT', ch:'R', col:'#25d0ff', max:15, stackKey:'rapid'},
     {key:'spreadT', ch:'S', col:'#7dd3fc', max:15, stackKey:'spread'},

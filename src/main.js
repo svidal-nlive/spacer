@@ -2,7 +2,7 @@
 import { canvas } from './core/canvas.js';
 import { start } from './engine/loop.js';
 import { pollGamepad } from './engine/input.js';
-import { initAudio, toggleMute } from './core/audio.js';
+import { initAudio, toggleMute, isMuted } from './core/audio.js';
 import { save, load } from './core/storage.js';
 import { game } from './core/state.js';
 import { setScene, update as sceneUpdate, render as sceneRender, getScene } from './engine/sceneManager.js';
@@ -105,7 +105,7 @@ function computeOverlayPosition(){
 function showPlayOverlay(){
   const triggerQ = ()=>{ const ev = new KeyboardEvent('keydown', {key:'q'}); window.dispatchEvent(ev); };
   const triggerE = ()=>{ const ev = new KeyboardEvent('keydown', {key:'e'}); window.dispatchEvent(ev); };
-  const triggerMute = ()=> toggleMute();
+  const triggerMute = ()=> { toggleMute(); showPlayOverlay(); };
   const toggleLaser = ()=>{ game.laserEnabled = !game.laserEnabled; save('laserEnabled', game.laserEnabled); };
   const toggleAuto = ()=>{ game.autoFire = !game.autoFire; save('autoFire', game.autoFire); };
   // on-screen secondary hold button
@@ -115,13 +115,26 @@ function showPlayOverlay(){
     { label:'Q', title:'Pulsar (Q)', onClick: triggerQ, testid:'btn-q' },
     { label:'E', title:'EMP (E)', onClick: triggerE, testid:'btn-e' },
     { label: game.laserEnabled? 'Lsr':'Lsr', title:'Toggle Laser (P)', onClick: toggleLaser, testid:'btn-laser' },
-    { label:'🔊', title:'Audio (M)', onClick: triggerMute, testid:'btn-audio' },
+  { label: (isMuted()? '🔇' : '🔊'), title:'Audio (M)', onClick: triggerMute, testid:'btn-audio' },
     { label:'AUTO', title:'Dev Auto-Fire Toggle', onClick: toggleAuto, variant:'pill', testid:'btn-auto' },
     { label:'⎍', title:'Secondary Hold (O)', onClick: ()=>{}, onDown:startHold, onUp:stopHold, testid:'btn-secondary' },
     { label:'⚙', title:'Settings', onClick: ()=>{ game.settingsOpen = !game.settingsOpen; showSettingsOverlay(); }, testid:'btn-settings' },
   ];
   if(game.devMode){ buttons.push({ label:'Dev', title:'Developer Tools', onClick: ()=> showDevOverlay(), variant:'pill', testid:'btn-dev' }); }
   uiButtons.show(buttons, { position: computeOverlayPosition() });
+  // Visual indication for mute state
+  try{
+    const audioBtn = document.querySelector('#ui-buttons-overlay [data-testid="btn-audio"]');
+    if(audioBtn){
+      if(isMuted()){
+        audioBtn.style.opacity = '0.55';
+        audioBtn.style.filter = 'grayscale(0.6)';
+      } else {
+        audioBtn.style.opacity = '1';
+        audioBtn.style.filter = 'none';
+      }
+    }
+  }catch{}
   if(game.settingsOpen) showSettingsOverlay();
 }
 

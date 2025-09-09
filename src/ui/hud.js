@@ -85,8 +85,8 @@ export function drawTopBar({score, wave, heat, heatMax, muted, twoXActive, twoXA
   ctx.fillStyle = pct<0.8? '#25d0ff' : pct<1? '#ffb63b':'#ff4d6d';
   ctx.fillRect(x,y,meterW*pct,meterH);
   ctx.strokeStyle = '#1e2f45'; ctx.strokeRect(x+0.5,y+0.5,meterW-1,meterH-1);
-  // mute indicator
-  ctx.globalAlpha = muted? 0.8:0.3; ctx.fillStyle = '#b7f3ff'; ctx.fillText(muted?'Muted':'Audio', x-56, 20); ctx.globalAlpha=1;
+  // remove text label near the heat meter to avoid confusion and clutter
+  // (heat meter alone communicates overheat state clearly)
   // draw bottom UI gutter after HUD so it overlays the playfield
   if(gutters.bottom > 0){
     const wCSS = canvas.width/dpr;
