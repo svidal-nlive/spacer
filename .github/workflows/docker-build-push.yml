@@ -47,6 +47,9 @@ jobs:
   deploy-to-server:
     needs: build-and-push
     runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-${{ github.ref }}
+      cancel-in-progress: true
     steps:
       - name: Trigger remote deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -63,5 +66,10 @@ jobs:
             cd /home/${{ secrets.DEPLOY_USER }}/homelab/projects/spacer
             # Always authenticate to GHCR and pull latest image
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "${GHCR_USERNAME:-${{ github.actor }}}" --password-stdin
+            # Stop existing stack before updating images to avoid stale binds
+            docker compose down || true
+            # Clean up dangling images (non-fatal)
+            docker image prune -f || true
+            # Pull new images and recreate containers
             docker compose pull
             docker compose up -d --force-recreate --remove-orphans
