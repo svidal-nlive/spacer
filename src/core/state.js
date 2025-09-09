@@ -28,6 +28,8 @@ export const game = {
   abilityUiCorner: 'bottom-right', // 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
   // dev tools
   devMode: false,
+  // dev pause (halts update loop while still rendering current frame)
+  devPause: false,
   // transient UI timers
   readyFlashQ: 0, readyFlashE: 0,
   screenFlash: 0,

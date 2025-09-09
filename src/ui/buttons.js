@@ -7,11 +7,17 @@ function ensureContainer(){
   el.id = containerId;
   const isTouch = (navigator.maxTouchPoints&&navigator.maxTouchPoints>0) || ('ontouchstart' in window);
   el.style.position = 'fixed';
-  el.style.left = '12px';
-  el.style.bottom = '12px';
+  // default position honors safe areas
+  el.style.left = 'calc(12px + env(safe-area-inset-left))';
+  el.style.bottom = 'calc(12px + env(safe-area-inset-bottom))';
   el.style.display = 'flex';
   el.style.flexDirection = 'row';
+  el.style.flexWrap = 'wrap';
   el.style.gap = '10px';
+  // cap width to avoid overlay covering too much content on narrow screens
+  el.style.maxWidth = 'calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right))';
+  // a little padding to keep buttons off the screen edge and safe areas
+  el.style.padding = '4px';
   el.style.zIndex = '1000';
   el.style.pointerEvents = 'auto';
   el.style.touchAction = 'manipulation';
@@ -78,10 +84,10 @@ export const uiButtons = {
     const pos = opts.position || 'bottom-left';
     el.style.top = el.style.right = el.style.bottom = el.style.left = '';
     el.style.transform = '';
-    if(pos==='bottom-left'){ el.style.left='12px'; el.style.bottom='12px'; }
-    else if(pos==='bottom-right'){ el.style.right='12px'; el.style.bottom='12px'; }
-    else if(pos==='top-left'){ el.style.left='12px'; el.style.top='12px'; }
-    else if(pos==='top-right'){ el.style.right='12px'; el.style.top='12px'; }
+  if(pos==='bottom-left'){ el.style.left='calc(12px + env(safe-area-inset-left))'; el.style.bottom='calc(12px + env(safe-area-inset-bottom))'; }
+  else if(pos==='bottom-right'){ el.style.right='calc(12px + env(safe-area-inset-right))'; el.style.bottom='calc(12px + env(safe-area-inset-bottom))'; }
+  else if(pos==='top-left'){ el.style.left='calc(12px + env(safe-area-inset-left))'; el.style.top='calc(12px + env(safe-area-inset-top))'; }
+  else if(pos==='top-right'){ el.style.right='calc(12px + env(safe-area-inset-right))'; el.style.top='calc(12px + env(safe-area-inset-top))'; }
     else if(pos==='center'){ el.style.left='50%'; el.style.top='50%'; el.style.transform='translate(-50%, -50%)'; }
     // optional caption
     if(opts.caption){

@@ -28,6 +28,7 @@ try{
   if(params.get('laser')==='0') { game.laserEnabled = false; }
   if(params.get('devShop')==='1') { setScene(shopScene); }
   if(params.get('dev')==='1') { game.devMode = true; }
+  if(params.get('pause')==='1') { game.devPause = true; }
 }catch{ /* no-op */ }
 window.addEventListener('keydown', (e)=>{
   if(e.key==='m') toggleMute();
@@ -61,6 +62,11 @@ window.addEventListener('keydown', (e)=>{
     }
     case 'p': { // toggle autonomous lasers (challenge mode)
       game.laserEnabled = !game.laserEnabled; save('laserEnabled', game.laserEnabled);
+      break;
+    }
+    case '`': // backtick toggles dev pause
+    case '~': {
+      if(game.devMode){ game.devPause = !game.devPause; }
       break;
     }
   }
@@ -138,6 +144,7 @@ function showDevOverlay(){
   const minus1 = ()=> setWave(game.wave - 1);
   const plus1 = ()=> setWave(game.wave + 1);
   const plus10 = ()=> setWave(game.wave + 10);
+  const togglePause = ()=>{ game.devPause = !game.devPause; };
   uiButtons.show([
   { label:'-10', title:'Wave -10', onClick: minus10, testid:'btn-wave--10' },
   { label:'-1', title:'Wave -1', onClick: minus1, testid:'btn-wave--1' },
@@ -145,6 +152,7 @@ function showDevOverlay(){
   { label:'+1', title:'Wave +1', onClick: plus1, testid:'btn-wave-+1' },
   { label:'+10', title:'Wave +10', onClick: plus10, testid:'btn-wave-+10' },
   { label:'Boss', title:'Next Boss Wave', onClick: ()=>{ const w = game.wave; const nextBoss = (Math.floor((w-1)/5)+1)*5; setWave(nextBoss); }, variant:'pill', testid:'btn-next-boss' },
+  { label: game.devPause? 'Resume':'Pause', title:'Dev Pause (no overlay)', onClick: togglePause, variant:'pill', testid:'btn-dev-pause' },
   { label:'Back', title:'Back', onClick: back, variant:'pill', testid:'btn-back' },
   ], { position:'bottom-right', caption:'Dev — Wave Jump' });
 }

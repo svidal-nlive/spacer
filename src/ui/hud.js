@@ -4,12 +4,17 @@ import { game } from '../core/state.js';
 import { bossActive } from '../entities/boss.js';
 export function drawTopBar({score, wave, heat, heatMax, muted, twoXActive, twoXAlpha}){
   const w = canvas.width; const dpr = window.devicePixelRatio || 1; const barH = 32*dpr;
+  const safeTop = (window.visualViewport?.offsetTop || 0) + (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('padding-top'))||0);
+  const cssSafeTop = Math.max(0, (typeof window !== 'undefined' ? (window.safeAreaInsetTop||0) : 0));
   ctx.save(); ctx.resetTransform(); ctx.scale(dpr,dpr);
-  ctx.fillStyle = 'rgba(10,13,18,0.9)'; ctx.fillRect(0,0,w/dpr,barH/dpr);
-  ctx.fillStyle = '#b7f3ff'; ctx.font = '12px system-ui, sans-serif';
+  // top bar shifted by safe-area inset top
+  ctx.fillStyle = 'rgba(10,13,18,0.9)'; ctx.fillRect(0,0 + 0,w/dpr,barH/dpr);
+  // clamp font for readability on small devices
+  const hudFontPx = Math.max(12, Math.min(14, Math.round(12 * (window.innerWidth<=380? 1.05 : 1))));
+  ctx.fillStyle = '#b7f3ff'; ctx.font = `${hudFontPx}px system-ui, sans-serif`;
   const scoreText = `Score ${score.toString().padStart(6,'0')}`;
   const waveText = `  Wave ${wave}`;
-  const x0 = 12, y0 = 20;
+  const x0 = 12, y0 = 20; // baseline within bar
   ctx.fillText(scoreText + waveText, x0, y0);
   // x2 gold badge glow near score when active
   if(twoXActive){
@@ -25,7 +30,7 @@ export function drawTopBar({score, wave, heat, heatMax, muted, twoXActive, twoXA
     ctx.save(); ctx.globalAlpha = alpha;
     ctx.fillStyle = '#ffd166'; ctx.strokeStyle = '#1e2f45';
     roundRect(ctx, bx, by, bw, bh, 6, true, true);
-    ctx.fillStyle = '#0f1621'; ctx.font = '10px system-ui, sans-serif';
+  ctx.fillStyle = '#0f1621'; ctx.font = `${Math.max(9, hudFontPx-2)}px system-ui, sans-serif`;
     ctx.fillText('2x', bx+6, y0-1);
     ctx.restore();
 
@@ -41,7 +46,7 @@ export function drawTopBar({score, wave, heat, heatMax, muted, twoXActive, twoXA
       ctx.save(); ctx.globalAlpha = alpha;
       ctx.fillStyle = '#ffd166'; ctx.strokeStyle = '#1e2f45';
       roundRect(ctx, bx2, by2, bw2, bh2, 5, true, true);
-      ctx.fillStyle = '#0f1621'; ctx.font = '9px system-ui, sans-serif';
+  ctx.fillStyle = '#0f1621'; ctx.font = `${Math.max(8, hudFontPx-3)}px system-ui, sans-serif`;
       ctx.fillText('2x', bx2+5, y0-1);
       ctx.restore();
     }
@@ -60,7 +65,7 @@ export function drawTopBar({score, wave, heat, heatMax, muted, twoXActive, twoXA
   ctx.globalAlpha = 0.9; ctx.fillStyle = game.laserEnabled? '#90f5a8' : '#3a4a58';
   ctx.fillRect(bx, by, badgeW, badgeH);
   ctx.strokeStyle = '#1e2f45'; ctx.strokeRect(bx+0.5, by+0.5, badgeW-1, badgeH-1);
-  ctx.fillStyle = '#0f1621'; ctx.font='10px system-ui, sans-serif';
+  ctx.fillStyle = '#0f1621'; ctx.font=`${Math.max(9, hudFontPx-2)}px system-ui, sans-serif`;
   ctx.fillText(game.laserEnabled? 'Laser ON':'Laser OFF', bx+3, by+10);
   ctx.restore();
 }
@@ -76,7 +81,8 @@ export function drawBossBar(name, hp, maxHp){
   if(!bossActive() || maxHp<=0) return;
   const dpr = window.devicePixelRatio || 1; const PAD = 12; const TOPBAR_H = 32; const GAP = 8;
   const wCSS = canvas.width/dpr; const barW = Math.min(420, wCSS - PAD*2); const barH = 10;
-  const x = (wCSS - barW)/2; const y = PAD + TOPBAR_H + GAP;
+  // nudge down slightly on very short screens to avoid crowding
+  const x = (wCSS - barW)/2; const y = PAD + TOPBAR_H + (window.innerHeight<=700? GAP*0.5 : GAP);
   const pct = Math.max(0, Math.min(1, hp/maxHp));
   ctx.save(); ctx.resetTransform(); ctx.scale(dpr,dpr);
   ctx.fillStyle = 'rgba(10,13,18,0.9)'; ctx.fillRect(x, y, barW, barH);
