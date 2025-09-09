@@ -1,0 +1,7 @@
+services:
+  spacer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: "ghcr.io/svidal-nlive/spacer:local"
+    # Keep all other settings from the base compose (labels, networks, etc.)

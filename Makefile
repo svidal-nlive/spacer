@@ -3,7 +3,7 @@ SHELL := /bin/bash
 # Default commit message if not provided: make push MSG="your message"
 MSG ?= chore: dev sync
 
-.PHONY: push build preview up down logs deploy-ci dispatch-ci
+.PHONY: push build preview up down logs deploy-ci dispatch-ci pull refresh up-local down-clean
 
 push:
 	@git status -sb
@@ -43,3 +43,17 @@ down:
 
 logs:
 	@docker compose logs -f --tail=200 spacer
+
+# Pull latest published image and recreate container
+pull:
+	@docker compose pull spacer
+
+refresh: pull
+	@docker compose up -d --force-recreate spacer
+
+# Use a local build override to run newest code without waiting for CI
+up-local:
+	@docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build spacer
+
+down-clean: down
+	@docker image prune -f

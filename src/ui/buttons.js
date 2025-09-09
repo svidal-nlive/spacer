@@ -41,10 +41,13 @@ function ensureContainer(){
   return el;
 }
 
-function makeButton({label, title, onClick, onDown, onUp, variant}){
+function makeButton({label, title, onClick, onDown, onUp, variant, testid}){
   const b = document.createElement('button');
   b.textContent = label;
   b.title = title||label;
+  if (testid) b.setAttribute('data-testid', testid);
+  // improve accessibility and stable selectors
+  if (!b.getAttribute('aria-label')) b.setAttribute('aria-label', title||label);
   if(variant) b.dataset.variant = variant;
   b.style.width='44px'; b.style.height='44px'; b.style.border='1px solid #26384f'; b.style.background='rgba(20,28,40,0.8)'; b.style.color='#b7f3ff';
   b.style.borderRadius='10px'; b.style.fontFamily='system-ui, sans-serif'; b.style.fontWeight='600'; b.style.cursor='pointer'; b.style.userSelect='none';

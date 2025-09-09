@@ -99,15 +99,15 @@ function showPlayOverlay(){
   const startHold = ()=> inputSecondaryHold(true);
   const stopHold = ()=> inputSecondaryHold(false);
   const buttons = [
-    { label:'Q', title:'Pulsar (Q)', onClick: triggerQ },
-    { label:'E', title:'EMP (E)', onClick: triggerE },
-    { label: game.laserEnabled? 'Lsr':'Lsr', title:'Toggle Laser (P)', onClick: toggleLaser },
-    { label:'🔊', title:'Audio (M)', onClick: triggerMute },
-    { label:'AUTO', title:'Dev Auto-Fire Toggle', onClick: toggleAuto, variant:'pill' },
-    { label:'⎍', title:'Secondary Hold (O)', onClick: ()=>{}, onDown:startHold, onUp:stopHold },
-    { label:'⚙', title:'Settings', onClick: ()=>{ game.settingsOpen = !game.settingsOpen; showSettingsOverlay(); } },
+    { label:'Q', title:'Pulsar (Q)', onClick: triggerQ, testid:'btn-q' },
+    { label:'E', title:'EMP (E)', onClick: triggerE, testid:'btn-e' },
+    { label: game.laserEnabled? 'Lsr':'Lsr', title:'Toggle Laser (P)', onClick: toggleLaser, testid:'btn-laser' },
+    { label:'🔊', title:'Audio (M)', onClick: triggerMute, testid:'btn-audio' },
+    { label:'AUTO', title:'Dev Auto-Fire Toggle', onClick: toggleAuto, variant:'pill', testid:'btn-auto' },
+    { label:'⎍', title:'Secondary Hold (O)', onClick: ()=>{}, onDown:startHold, onUp:stopHold, testid:'btn-secondary' },
+    { label:'⚙', title:'Settings', onClick: ()=>{ game.settingsOpen = !game.settingsOpen; showSettingsOverlay(); }, testid:'btn-settings' },
   ];
-  if(game.devMode){ buttons.push({ label:'Dev', title:'Developer Tools', onClick: ()=> showDevOverlay(), variant:'pill' }); }
+  if(game.devMode){ buttons.push({ label:'Dev', title:'Developer Tools', onClick: ()=> showDevOverlay(), variant:'pill', testid:'btn-dev' }); }
   uiButtons.show(buttons, { position: computeOverlayPosition() });
   if(game.settingsOpen) showSettingsOverlay();
 }
@@ -120,12 +120,12 @@ function showSettingsOverlay(){
   const toggleGrid = ()=>{ game.showAutoGrid = !game.showAutoGrid; save('showAutoGrid', game.showAutoGrid); showSettingsOverlay(); };
   const devMenu = ()=>{ showDevOverlay(); };
   uiButtons.show([
-    { label:'—', title:'Range -', onClick: decRange },
-    { label:`${game.autoRange}px`, title:'AUTO Range', onClick: ()=>{} , variant:'pill' },
-    { label:'+', title:'Range +', onClick: incRange },
-    { label: game.showAutoGrid? 'Grid✓':'Grid', title:'Toggle AUTO Grid', onClick: toggleGrid, variant:'pill' },
-    ...(game.devMode? [{ label:'Dev', title:'Developer Tools', onClick: devMenu, variant:'pill' }]: []),
-    { label:'Close', title:'Close Settings', onClick: close, variant:'pill' },
+  { label:'—', title:'Range -', onClick: decRange, testid:'btn-range-dec' },
+  { label:`${game.autoRange}px`, title:'AUTO Range', onClick: ()=>{} , variant:'pill', testid:'lbl-range' },
+  { label:'+', title:'Range +', onClick: incRange, testid:'btn-range-inc' },
+  { label: game.showAutoGrid? 'Grid✓':'Grid', title:'Toggle AUTO Grid', onClick: toggleGrid, variant:'pill', testid:'btn-grid' },
+  ...(game.devMode? [{ label:'Dev', title:'Developer Tools', onClick: devMenu, variant:'pill', testid:'btn-dev' }]: []),
+  { label:'Close', title:'Close Settings', onClick: close, variant:'pill', testid:'btn-settings-close' },
   ], { position:'bottom-right', caption:'Settings — AUTO' });
 }
 
@@ -139,13 +139,13 @@ function showDevOverlay(){
   const plus1 = ()=> setWave(game.wave + 1);
   const plus10 = ()=> setWave(game.wave + 10);
   uiButtons.show([
-    { label:'-10', title:'Wave -10', onClick: minus10 },
-    { label:'-1', title:'Wave -1', onClick: minus1 },
-    { label:`Wave ${game.wave}`, title:'Current Wave', onClick: ()=>{}, variant:'pill' },
-    { label:'+1', title:'Wave +1', onClick: plus1 },
-    { label:'+10', title:'Wave +10', onClick: plus10 },
-    { label:'Boss', title:'Next Boss Wave', onClick: ()=>{ const w = game.wave; const nextBoss = (Math.floor((w-1)/5)+1)*5; setWave(nextBoss); }, variant:'pill' },
-    { label:'Back', title:'Back', onClick: back, variant:'pill' },
+  { label:'-10', title:'Wave -10', onClick: minus10, testid:'btn-wave--10' },
+  { label:'-1', title:'Wave -1', onClick: minus1, testid:'btn-wave--1' },
+  { label:`Wave ${game.wave}`, title:'Current Wave', onClick: ()=>{}, variant:'pill', testid:'lbl-wave' },
+  { label:'+1', title:'Wave +1', onClick: plus1, testid:'btn-wave-+1' },
+  { label:'+10', title:'Wave +10', onClick: plus10, testid:'btn-wave-+10' },
+  { label:'Boss', title:'Next Boss Wave', onClick: ()=>{ const w = game.wave; const nextBoss = (Math.floor((w-1)/5)+1)*5; setWave(nextBoss); }, variant:'pill', testid:'btn-next-boss' },
+  { label:'Back', title:'Back', onClick: back, variant:'pill', testid:'btn-back' },
   ], { position:'bottom-right', caption:'Dev — Wave Jump' });
 }
 
@@ -154,15 +154,15 @@ function showShopOverlay(){
   const lock = ()=>{ const ev = new KeyboardEvent('keydown', {key:'l'}); window.dispatchEvent(ev); };
   const skip = ()=>{ const ev = new KeyboardEvent('keydown', {key:' '}); window.dispatchEvent(ev); };
   uiButtons.show([
-  { label:'R', title:'Reroll (R)', onClick: reroll },
-  { label:'L', title:'Toggle Lock (L)', onClick: lock },
-  { label:'Skip', title:'Skip (Space)', onClick: skip, variant:'pill' },
+  { label:'R', title:'Reroll (R)', onClick: reroll, testid:'btn-reroll' },
+  { label:'L', title:'Toggle Lock (L)', onClick: lock, testid:'btn-lock' },
+  { label:'Skip', title:'Skip (Space)', onClick: skip, variant:'pill', testid:'btn-skip' },
   ], { position: 'bottom-left', caption: 'Shop Controls' });
 }
 
 function showGameOverOverlay(){
   uiButtons.show([
-    { label:'Restart', title:'Restart Run', onClick: ()=>{ const ev = new KeyboardEvent('keydown', {key:' '}); window.dispatchEvent(ev); }, variant:'wide' }
+  { label:'Restart', title:'Restart Run', onClick: ()=>{ const ev = new KeyboardEvent('keydown', {key:' '}); window.dispatchEvent(ev); }, variant:'wide', testid:'btn-restart' }
   ], { position:'center' });
 }
 
