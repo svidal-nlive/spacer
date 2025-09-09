@@ -55,7 +55,13 @@ export const waveScene = {
   const dpr = window.devicePixelRatio || 1;
   const yScreen = getBossBarrierScreenY(); // CSS px
   // Convert to device px to match world render offset scale
-  game.player.y = (yScreen*dpr - (canvas.height*0.5)) + 40; game.player.targetY = game.player.y;
+  game.player.y = (yScreen*dpr - (canvas.height*0.5)) + 20; game.player.targetY = game.player.y;
+  // Start player at bottom of playable area with some margin
+  const pb = getPlayableScreenBounds();
+  const startX = 0; // centered horizontally
+  const startYcss = pb.y + pb.height - 60; // 60px above bottom of playable
+  game.playerPos.x = 0;
+  game.playerPos.y = (startYcss - (pb.y + pb.height/2)) * dpr;
     this.state = 'bossIntro'; this.stateT = 0;
   }
   },
@@ -77,6 +83,37 @@ export const waveScene = {
   // on-hit invulnerability decay
   if(game.invulnT>0) game.invulnT = Math.max(0, game.invulnT - dt);
 
+    // topdown free movement: WASD/Arrows
+    if(game.arenaMode==='topdown'){
+      const speed = 240; // px/s
+      // keyboard state
+      const left = keysHeld['a']||keysHeld['arrowleft'];
+      const right = keysHeld['d']||keysHeld['arrowright'];
+      const up = keysHeld['w']||keysHeld['arrowup'];
+      const down = keysHeld['s']||keysHeld['arrowdown'];
+      let vx = (right?1:0) - (left?1:0);
+      let vy = (down?1:0) - (up?1:0);
+      const len = Math.hypot(vx,vy)||1; vx/=len; vy/=len;
+      game.playerPos.x += vx*speed*dt;
+      game.playerPos.y += vy*speed*dt;
+      // clamp within playable bounds below barrier
+      const dpr = window.devicePixelRatio || 1; const pb = getPlayableScreenBounds();
+      const halfW = (canvas.width/dpr)/2, halfH=(canvas.height/dpr)/2;
+      // Convert world pos (device px) to screen CSS for clamping
+      const sx = (game.playerPos.x / dpr) + (pb.x + pb.width/2);
+      const syBase = (game.playerPos.y / dpr) + (pb.y + pb.height/2);
+      // barrier screen Y (CSS)
+      const yBarCSS = getBossBarrierScreenY();
+      // compute minY as a bit below barrier; maxY at bottom of playable
+      const minYCSS = Math.max(pb.y + 30, yBarCSS + 30);
+      const maxYCSS = pb.y + pb.height - 30;
+      const minXCSS = pb.x + 30; const maxXCSS = pb.x + pb.width - 30;
+      const clampedSX = Math.min(maxXCSS, Math.max(minXCSS, sx));
+      const clampedSY = Math.min(maxYCSS, Math.max(minYCSS, syBase));
+      // convert back to world
+      game.playerPos.x = (clampedSX - (pb.x + pb.width/2)) * dpr;
+      game.playerPos.y = (clampedSY - (pb.y + pb.height/2)) * dpr;
+    }
     // heat
     if(game.overheated){
       game.heat = Math.max(0, game.heat - game.heatCool*dt);
@@ -120,12 +157,15 @@ export const waveScene = {
       }
     }
     if(!game.overheated && input.firing && this.fireCooldown===0){
-      const muzzle = 28; const mx = Math.cos(input.aimAngle)*muzzle; const my = Math.sin(input.aimAngle)*muzzle;
+      const muzzle = 28;
+      const ox = (game.arenaMode==='topdown') ? game.playerPos.x : 0;
+      const oy = (game.arenaMode==='topdown') ? game.playerPos.y : 0;
+      const mx = ox + Math.cos(input.aimAngle)*muzzle; const my = oy + Math.sin(input.aimAngle)*muzzle;
       const spreadN = (game.powerups.spreadT>0)? 3 : 1; const spreadAngle = 0.15;
       const rapidMul = (game.powerups.rapidT>0)? 1.8 : 1.0;
       for(let i=0;i<spreadN;i++){
         const a = input.aimAngle + (spreadN>1? (i-1)*spreadAngle : 0);
-        spawnBullet(mx, my, a, {speed: game.bulletSpeed, dmg: game.dmg, ttl: 1.2});
+  spawnBullet(mx, my, a, {speed: game.bulletSpeed, dmg: game.dmg, ttl: 1.2});
       }
       this.fireCooldown = (1/game.rof) / rapidMul;
     }
@@ -202,6 +242,8 @@ export const waveScene = {
       // gate until boss dies
       if(!bossActive()){
         this.state='bossOutro'; this.stateT=0; triggerLetterboxOut(0.6); disableBossBarrier(); game.arenaMode='ring';
+        // reset player world pos when leaving topdown
+        game.playerPos.x = 0; game.playerPos.y = 0;
       }
     }
     else if(this.state==='bossOutro'){
@@ -216,7 +258,9 @@ export const waveScene = {
   updatePickups(dt);
   // collect: player collects by proximity to turret center
   forEachPickup(p=>{
-    const d = Math.hypot(p.x, p.y);
+    const ox = (game.arenaMode==='topdown') ? game.playerPos.x : 0;
+    const oy = (game.arenaMode==='topdown') ? game.playerPos.y : 0;
+    const d = Math.hypot(p.x - ox, p.y - oy);
     if(d <= 30){ applyPickup(p.type); deactivatePickup(p); }
   });
   // tick power-up timers
@@ -257,7 +301,11 @@ export const waveScene = {
   const ease = 0.12;
   game.player.y += (game.player.targetY - game.player.y) * ease;
   ctx.setTransform(dpr*this.camZoom,0,0,dpr*this.camZoom,cx,cy + game.player.y);
-  // turret (higher contrast + outline)
+  // turret (render at world origin in ring mode; at playerPos in topdown)
+  ctx.save();
+  const px = (game.arenaMode==='topdown') ? game.playerPos.x : 0;
+  const py = (game.arenaMode==='topdown') ? game.playerPos.y : 0;
+  ctx.translate(px, py);
   ctx.fillStyle = '#0e1b2b';
   ctx.beginPath(); ctx.arc(0,0, 22, 0, Math.PI*2); ctx.fill();
   ctx.lineWidth = 3; ctx.strokeStyle = '#25d0ffbb'; ctx.stroke();
@@ -265,6 +313,7 @@ export const waveScene = {
   if(game.invulnT>0){ ctx.save(); const a = Math.min(1, game.invulnT/1.0); ctx.globalAlpha = 0.25 + 0.35*a; ctx.strokeStyle='#ffd3d3'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(0,0, 26, 0, Math.PI*2); ctx.stroke(); ctx.restore(); }
   // barrel
   ctx.save(); ctx.rotate(input.aimAngle); ctx.fillStyle = game.overheated? '#ff4d6d':'#25d0ff'; ctx.fillRect(0,-4,32,8); ctx.restore();
+  ctx.restore();
   // world entities
   drawBullets(ctx);
   // In boss cinematic phases, avoid drawing regular enemies during intro for clarity
@@ -285,7 +334,10 @@ export const waveScene = {
   drawEffects(); drawEnemyShots(); drawLasers();
   ctx.restore();
   // Heat ring at the playable center respecting render offset
-  drawHeatRing((pb.x + pb.width/2) * dpr, (pb.y + pb.height/2) * dpr + game.player.y, 30, game.heat/game.heatMax);
+  // Heat ring follows player in topdown, remains center in ring mode
+  const hx = (pb.x + pb.width/2) * dpr + (game.arenaMode==='topdown'? game.playerPos.x : 0);
+  const hy = (pb.y + pb.height/2) * dpr + game.player.y + (game.arenaMode==='topdown'? game.playerPos.y : 0);
+  drawHeatRing(hx, hy, 30, game.heat/game.heatMax);
   // top bar with ability chips
   // compute a fade alpha for 2x badge: ease in first 0.5s, ease out last 0.5s
   let twoXAlpha = 0;

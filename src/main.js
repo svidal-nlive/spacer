@@ -27,6 +27,11 @@ try{
   if(params.get('grid')==='1') { game.showAutoGrid = true; }
   if(params.get('laser')==='0') { game.laserEnabled = false; }
   if(params.get('devShop')==='1') { setScene(shopScene); }
+  // Jump directly to a specific wave for testing: ?wave=5
+  const waveParam = parseInt(params.get('wave')||'', 10);
+  if(!Number.isNaN(waveParam) && waveParam>0){
+    game.wave = waveParam; setScene(waveScene);
+  }
   if(params.get('dev')==='1') { game.devMode = true; }
   if(params.get('pause')==='1') { game.devPause = true; }
 }catch{ /* no-op */ }
