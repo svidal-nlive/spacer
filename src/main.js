@@ -30,6 +30,11 @@ try{
   if(params.get('dev')==='1') { game.devMode = true; }
   if(params.get('pause')==='1') { game.devPause = true; }
 }catch{ /* no-op */ }
+
+// Enforce ability bars in top gutter by default, overriding any saved preference
+import { save as __saveOverride } from './core/storage.js';
+game.abilityUiMode = 'corner'; __saveOverride('abilityUiMode', game.abilityUiMode);
+game.abilityUiCorner = 'top-right'; __saveOverride('abilityUiCorner', game.abilityUiCorner);
 window.addEventListener('keydown', (e)=>{
   if(e.key==='m') toggleMute();
   // hold-to-fire secondary (lasers); press and hold 'O'
@@ -89,8 +94,10 @@ canvas.addEventListener('pointerdown', ()=> initAudio());
 function computeOverlayPosition(){
   if(game.abilityUiMode==='corner'){
     const c = game.abilityUiCorner||'bottom-right';
-    if(c.includes('bottom-right')) return 'bottom-left';
-    if(c.includes('bottom-left')) return 'bottom-right';
+  if(c.includes('top-right')) return 'bottom-left';
+  if(c.includes('top-left')) return 'bottom-right';
+  if(c.includes('bottom-right')) return 'top-left';
+  if(c.includes('bottom-left')) return 'top-right';
   }
   return 'bottom-right';
 }

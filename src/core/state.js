@@ -25,7 +25,7 @@ export const game = {
   // accessibility / UI
   showAbilityLabels: true,
   abilityUiMode: 'corner', // 'corner' | 'ring'
-  abilityUiCorner: 'bottom-right', // 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+  abilityUiCorner: 'top-right', // 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
   // dev tools
   devMode: false,
   // dev pause (halts update loop while still rendering current frame)
