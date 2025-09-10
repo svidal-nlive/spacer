@@ -200,7 +200,9 @@ Tip: For partial implementations, leave boxes unchecked, but add a short note af
 	- Stage beats: add 1–2 more simple formations; add fairness guards
 
 2) Boss intro and outro cinematics
-	- Boss entrance lock-in; defeat bullet-clear + reward burst; revert to ring
+	- [x] Intro/outro zoom tweens (base)
+	- [x] Bullet-clear on outro start; revert to ring
+	- Boss entrance lock-in; reward burst polish
 
 3) Dev flags and overlays
 	- `mode`/`zoom`/`speed`/`skipIntro`/`patterns`; simple path/formation debug overlay

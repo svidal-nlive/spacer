@@ -78,7 +78,7 @@ export function drawTopBar({score, wave, heat, heatMax, muted, twoXActive, twoXA
       ctx.restore();
     }
   }
-  // heat bar
+  // heat bar (vertical mode may hide or reflect expanded policy later; for now always show)
   const x = (w/dpr)-meterW-12, y = 12;
   ctx.fillStyle = '#142231'; ctx.fillRect(x,y,meterW,meterH);
   const pct = Math.min(1, heat/heatMax);

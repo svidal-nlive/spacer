@@ -36,6 +36,8 @@ export const waveScene = {
   stateT: 0,
   // simple vertical stage timeline (wave 5 stub)
   stageBeat: 0,
+  // cinematic zoom
+  zoomTween: { t:0, dur:0, from:1, to:1 },
   enter(){
     this.enemySpawnT = 0; this.fireCooldown = 0; this.spawned = 0; game.lastReward = 0; game.earnedThisWave = 0; game.lastRewardKills = 0; game.lastRewardClear = 0;
     // set a per-wave quota and alive cap
@@ -55,6 +57,8 @@ export const waveScene = {
   // If boss wave, start with a short vertical stage section before the boss
   if(isBossWave()){
   triggerLetterboxIn(0.8); enableBossBarrier(); setArena('vertical'); setInputScheme('verticalFixed');
+  // intro zoom-out tween
+  this.zoomTween = { t:0, dur: 0.9, from: 1.0, to: 0.9 };
   // Pre-position player below barrier so camera shift is evident (consider letterbox offset)
   const dpr = window.devicePixelRatio || 1;
   const yScreen = getBossBarrierScreenY(); // CSS px
@@ -74,6 +78,8 @@ export const waveScene = {
   this.stateT += dt;
   // tick arena mode (scroll, etc.)
   try{ getArena().update?.(dt); }catch{}
+  // zoom tween update
+  if(this.zoomTween.dur>0 && this.zoomTween.t < this.zoomTween.dur){ this.zoomTween.t = Math.min(this.zoomTween.dur, this.zoomTween.t + dt); }
   // gamepad ability triggers
   if(input.gpQTriggered) usePulsar();
   if(input.gpETriggered) useEmp();
@@ -267,10 +273,14 @@ export const waveScene = {
       if(this.stageBeat===0 && this.stateT>=0.4){ spawnLaneGrunts(); this.stageBeat=1; }
       // Beat 1: wedge strikers
       if(this.stageBeat===1 && this.stateT>=4.0){ spawnWedgeStrikers(); this.stageBeat=2; }
-      // Beat 2: turrets (tanks) drop-in
-      if(this.stageBeat===2 && this.stateT>=8.0){ spawnTurretPods(); this.stageBeat=3; }
-      // transition when field mostly clear after beat 3
-      if(this.stageBeat>=3 && this.stateT>=12.0){
+  // Beat 2: turrets (tanks) drop-in
+  if(this.stageBeat===2 && this.stateT>=8.0){ spawnTurretPods(); this.stageBeat=3; }
+  // Beat 3: zig-zag strafers
+  if(this.stageBeat===3 && this.stateT>=10.8){ spawnZigZagStrafers(); this.stageBeat=4; }
+  // Beat 4: spiral swirl drop
+  if(this.stageBeat===4 && this.stateT>=13.6){ spawnSpiralSwirl(); this.stageBeat=5; }
+  // transition when field mostly clear after last beat
+  if(this.stageBeat>=5 && this.stateT>=18.0){
         // wait until few alive remain
         let alive=0; forEachEnemy(e=>{ if(e.active) alive++; });
         if(alive<=2){ this.state='bossIntro'; this.stateT=0; }
@@ -286,16 +296,25 @@ export const waveScene = {
         this.state='bossFight'; this.stateT=0;
       }
     }
-  else if(this.state==='bossFight'){
+    else if(this.state==='bossFight'){
       // gate until boss dies
       if(!bossActive()){
-        this.state='bossOutro'; this.stateT=0; triggerLetterboxOut(0.6); disableBossBarrier(); setArena('ring'); setInputScheme('twinStick');
+        this.state='bossOutro'; this.stateT=0;
+        // outro zoom-in tween
+        this.zoomTween = { t:0, dur: 0.8, from: this.camZoom, to: 1.0 };
+        // letterbox out later in outro
         // reset player world pos when leaving topdown
         game.playerPos.x = 0; game.playerPos.y = 0;
       }
     }
     else if(this.state==='bossOutro'){
-      if(this.stateT>=0.65){ this.state='end'; this.stateT=0; concludeWave(); return; }
+      // perform bullet-clear and reward auto-collect early in outro
+      if(this.stateT<0.2){ try{ bulletClear(); }catch{} }
+      // ease out letterbox midway
+      if(this.stateT>=0.4){ triggerLetterboxOut(0.6); }
+      // at end, revert to ring
+      if(this.stateT>=0.8){ disableBossBarrier(); setArena('ring'); setInputScheme('twinStick'); }
+      if(this.stateT>=0.9){ this.state='end'; this.stateT=0; concludeWave(); return; }
     }
 
   updateBullets(dt); updateEnemies(dt); updateEnemyShots(dt); handleBulletEnemyCollisions(); handleBulletEnemyShotCollisions();
@@ -338,8 +357,13 @@ export const waveScene = {
   const dpr = window.devicePixelRatio || 1;
   const pb = getPlayableScreenBounds();
   const wCSS = canvas.width/dpr, hCSS = canvas.height/dpr;
-  const pressure = Math.min(1, (game.heat/game.heatMax)*0.7 + 0.3);
-  const targetZoom = (game.devZoom!=null? game.devZoom : (1 + 0.02*pressure));
+    const pressure = Math.min(1, (game.heat/game.heatMax)*0.7 + 0.3);
+    let targetZoom = (game.devZoom!=null? game.devZoom : (1 + 0.02*pressure));
+    // apply cinematic tween if active
+    if(this.zoomTween.dur>0 && this.zoomTween.t<=this.zoomTween.dur){
+      const k = this.zoomTween.t/this.zoomTween.dur; const ease = k*k*(3-2*k); // smoothstep
+      targetZoom = this.zoomTween.from + (this.zoomTween.to - this.zoomTween.from)*ease;
+    }
   this.camZoom += (targetZoom - this.camZoom) * 0.08; // ease
   // center of playable area in CSS px
   const cx = (pb.x + pb.width/2) * dpr;
@@ -441,6 +465,19 @@ function spawnTurretPods(){
   const xs = [-160, 0, 160];
   for(const x of xs) spawnEnemyAt(x, -340, 'tank');
 }
+function spawnZigZagStrafers(){
+  // spawn strikers offset left/right that will naturally zig as they chase
+  const ys = [-360, -300, -260];
+  for(const y of ys){ spawnEnemyAt(-180, y, 'striker'); spawnEnemyAt(180, y, 'striker'); }
+}
+function spawnSpiralSwirl(){
+  // drop a ring of grunts in a swirl pattern above
+  const count = 8; const rad = 200; const off = Math.random()*Math.PI*2;
+  for(let i=0;i<count;i++){
+    const a = off + (i/count)*Math.PI*2; const x = Math.cos(a)*rad; const y = -360 + Math.sin(a)*60;
+    spawnEnemyAt(x, y, 'grunt');
+  }
+}
 
 // ability triggers (keyboard/gamepad)
 window.addEventListener('keydown', (e)=>{
@@ -453,6 +490,12 @@ window.addEventListener('keydown', (e)=>{
 
 import { getScene as getSceneRef } from '../engine/sceneManager.js';
 import { getPlayerWorldPos } from '../core/state.js';
+import { forEachBullet, deactivateBullet } from '../entities/bullet.js';
+
+function bulletClear(){
+  // deactivate all bullets on screen
+  try{ forEachBullet(b=> deactivateBullet(b)); }catch{}
+}
 function usePulsar(){ if(game.abilQ_cd>0) return; // radial shockwave: damage or pushback
   // tuned: larger radius, a bit more push
   const radius = 200;
