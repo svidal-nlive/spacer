@@ -1,7 +1,9 @@
 // scenes/wave.js - manage a wave, spawn and clear
 import { canvas, ctx } from '../core/canvas.js';
 import { game } from '../core/state.js';
-import { input } from '../engine/input.js';
+import { input, keysHeld } from '../engine/input.js';
+import { getArena } from '../engine/arena.js';
+import { activeScheme } from '../engine/inputScheme.js';
 import { clamp } from '../core/rng.js';
 import { spawnBullet, updateBullets, drawBullets } from '../entities/bullet.js';
 import { spawnEnemy, spawnEnemyAt, updateEnemies, drawEnemies, forEachEnemy } from '../entities/enemy.js';
@@ -67,6 +69,8 @@ export const waveScene = {
   },
   update(dt){
   this.stateT += dt;
+  // tick arena mode (scroll, etc.)
+  try{ getArena().update?.(dt); }catch{}
   // gamepad ability triggers
   if(input.gpQTriggered) usePulsar();
   if(input.gpETriggered) useEmp();
@@ -83,17 +87,19 @@ export const waveScene = {
   // on-hit invulnerability decay
   if(game.invulnT>0) game.invulnT = Math.max(0, game.invulnT - dt);
 
-    // topdown free movement: WASD/Arrows
-    if(game.arenaMode==='topdown'){
+    // topdown free movement: WASD/Arrows (existing boss mode) or new vertical arena
+    if(game.arenaMode==='topdown' || game.arenaMode==='vertical'){
       const speed = 240; // px/s
       // keyboard state
-      const left = keysHeld['a']||keysHeld['arrowleft'];
-      const right = keysHeld['d']||keysHeld['arrowright'];
-      const up = keysHeld['w']||keysHeld['arrowup'];
-      const down = keysHeld['s']||keysHeld['arrowdown'];
-      let vx = (right?1:0) - (left?1:0);
-      let vy = (down?1:0) - (up?1:0);
-      const len = Math.hypot(vx,vy)||1; vx/=len; vy/=len;
+      let { vx, vy } = (game.arenaMode==='vertical') ? activeScheme.getDesiredVelocity() : (function(){
+        const left = keysHeld['a']||keysHeld['arrowleft'];
+        const right = keysHeld['d']||keysHeld['arrowright'];
+        const up = keysHeld['w']||keysHeld['arrowup'];
+        const down = keysHeld['s']||keysHeld['arrowdown'];
+        let vx = (right?1:0) - (left?1:0);
+        let vy = (down?1:0) - (up?1:0);
+        const len = Math.hypot(vx,vy)||1; return { vx: vx/len, vy: vy/len };
+      })();
       game.playerPos.x += vx*speed*dt;
       game.playerPos.y += vy*speed*dt;
       // clamp within playable bounds below barrier
@@ -160,11 +166,12 @@ export const waveScene = {
       const muzzle = 28;
       const ox = (game.arenaMode==='topdown') ? game.playerPos.x : 0;
       const oy = (game.arenaMode==='topdown') ? game.playerPos.y : 0;
-      const mx = ox + Math.cos(input.aimAngle)*muzzle; const my = oy + Math.sin(input.aimAngle)*muzzle;
+      const aimAngle = (game.arenaMode==='vertical') ? activeScheme.getAimAngle() : input.aimAngle;
+      const mx = ox + Math.cos(aimAngle)*muzzle; const my = oy + Math.sin(aimAngle)*muzzle;
       const spreadN = (game.powerups.spreadT>0)? 3 : 1; const spreadAngle = 0.15;
       const rapidMul = (game.powerups.rapidT>0)? 1.8 : 1.0;
       for(let i=0;i<spreadN;i++){
-        const a = input.aimAngle + (spreadN>1? (i-1)*spreadAngle : 0);
+        const a = aimAngle + (spreadN>1? (i-1)*spreadAngle : 0);
   spawnBullet(mx, my, a, {speed: game.bulletSpeed, dmg: game.dmg, ttl: 1.2});
       }
       this.fireCooldown = (1/game.rof) / rapidMul;
@@ -287,7 +294,7 @@ export const waveScene = {
   render(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
     // subtle camera zoom cadence based on heat and enemy pressure
-    const dpr = window.devicePixelRatio || 1;
+  const dpr = window.devicePixelRatio || 1;
   const pb = getPlayableScreenBounds();
   const wCSS = canvas.width/dpr, hCSS = canvas.height/dpr;
     const pressure = Math.min(1, (game.heat/game.heatMax)*0.7 + 0.3);
@@ -300,7 +307,9 @@ export const waveScene = {
   // Smoothly ease player render offset to target
   const ease = 0.12;
   game.player.y += (game.player.targetY - game.player.y) * ease;
-  ctx.setTransform(dpr*this.camZoom,0,0,dpr*this.camZoom,cx,cy + game.player.y);
+  // Arena-managed camera transform (ring/topdown vs vertical)
+  const arena = getArena();
+  arena.applyCamera(ctx, dpr*this.camZoom, cx, cy);
   // turret (render at world origin in ring mode; at playerPos in topdown)
   ctx.save();
   const px = (game.arenaMode==='topdown') ? game.playerPos.x : 0;
@@ -312,7 +321,8 @@ export const waveScene = {
   // invulnerability shimmer ring
   if(game.invulnT>0){ ctx.save(); const a = Math.min(1, game.invulnT/1.0); ctx.globalAlpha = 0.25 + 0.35*a; ctx.strokeStyle='#ffd3d3'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(0,0, 26, 0, Math.PI*2); ctx.stroke(); ctx.restore(); }
   // barrel
-  ctx.save(); ctx.rotate(input.aimAngle); ctx.fillStyle = game.overheated? '#ff4d6d':'#25d0ff'; ctx.fillRect(0,-4,32,8); ctx.restore();
+  const aim = (game.arenaMode==='vertical') ? activeScheme.getAimAngle() : input.aimAngle;
+  ctx.save(); ctx.rotate(aim); ctx.fillStyle = game.overheated? '#ff4d6d':'#25d0ff'; ctx.fillRect(0,-4,32,8); ctx.restore();
   ctx.restore();
   // world entities
   drawBullets(ctx);

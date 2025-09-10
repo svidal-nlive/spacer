@@ -2,6 +2,8 @@
 import { canvas } from './core/canvas.js';
 import { start } from './engine/loop.js';
 import { pollGamepad } from './engine/input.js';
+import { setArena } from './engine/arena.js';
+import { setInputScheme } from './engine/inputScheme.js';
 import { initAudio, toggleMute, isMuted } from './core/audio.js';
 import { save, load } from './core/storage.js';
 import { game } from './core/state.js';
@@ -34,6 +36,9 @@ try{
   }
   if(params.get('dev')==='1') { game.devMode = true; }
   if(params.get('pause')==='1') { game.devPause = true; }
+  // Arena and input scheme dev flags
+  const arena = params.get('arena'); if(arena){ setArena(arena); }
+  const scheme = params.get('scheme'); if(scheme){ setInputScheme(scheme); }
 }catch{ /* no-op */ }
 
 // Enforce ability bars in top gutter by default, overriding any saved preference

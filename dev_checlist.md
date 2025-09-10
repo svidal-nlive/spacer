@@ -12,6 +12,56 @@ Tip: For partial implementations, leave boxes unchecked, but add a short note af
 
 ### A) Discussed but not yet implemented
 
+#### Vertical Stage (Boss Waves 5, 10, 15…)
+- [ ] Arena mode: `vertical` scaffold (stage lifecycle, pause/resume, revert to ring)
+	- [ ] Parallax scrolling background (2–3 layers), performance-batched
+	- [ ] Camera: zoom-out to ~0.8 during intro, subtle vertical bob; respect safe-area gutters
+	- [ ] Playable bounds: spawn culling and gutter avoidance
+- [ ] Cinematics (intro/outro)
+	- [ ] Intro: letterbox in; turret slides down; ship chassis reveal + clamp-on SFX; zoom-out; “GO” sweep
+	- [ ] Outro: bullet-clear, reward auto-collect; zoom-in; ship docks; revert to ring mode
+	- [ ] Audio stingers + timing polish
+- [ ] Player Ship (controls + feel)
+	- [ ] Fixed-forward firing from ship nose (no cursor-aimed turret for this stage)
+	- [ ] Inputs:
+		- [ ] Mouse/touch: click/tap to fire; hold = continuous fire
+		- [ ] Gamepad/keys: move ship (WASD/Arrows/Left stick)
+		- [ ] Right mouse held OR touch drag: move ship while held/dragging
+	- [ ] Movement: accel/drag, clamp to bounds; magnetized pickups within small radius
+	- [ ] Abilities tuning: Pulsar radius/push; EMP stun/interrupt; bullet-clear rules
+	- [ ] Overheat policy (stage-local):
+		- [ ] Decide: disable overheat entirely OR raise cap significantly (e.g., +200%) with faster cooldown
+		- [ ] Implement toggle + UI behavior (hide/resize heat meter when disabled or expanded)
+- [ ] Formation system & stage timeline
+	- [ ] Timeline DSL for beats (time windows, formation type, params)
+	- [ ] Formation primitives:
+		- [ ] Lanes (3–5 lanes; staggered; cadence fire)
+		- [ ] V/Wedge (corner entries, converge + aimed spreads)
+		- [ ] Zig-zag strafers (direction changes fire windows)
+		- [ ] Spirals/Swirls (orbit + slow drops; corkscrew variant later)
+		- [ ] Carriers + Drones (carrier sine path; drone releases)
+		- [ ] Dive bombers (telegraph + curved dash)
+		- [ ] Turret pods (hold position 2–3s; barrage; withdraw)
+		- [ ] Mine lines (horizontal/diagonal; proximity/warn ring)
+	- [ ] Pattern emitters: aimed/fan/ring/laser/bomb; fairness min-TTI
+	- [ ] Optional miniboss beat (pickup carrier or weakpoint pod)
+- [ ] Boss — The Overseer (vertical rework)
+	- [ ] Entrance sequence + lock-in
+	- [ ] Phase set (1–4) orchestrating formations → direct aggression
+	- [ ] Curtains/lasers with safe lanes; HP bar below HUD and below letterbox
+	- [ ] Defeat sequence: dual shockwaves, bullet-clear, reward burst
+- [ ] UI/HUD
+	- [ ] Ability bars top-right; subtle ready pulses (no harsh flash)
+	- [ ] Boss bar alignment under letterbox; responsive at low DPR
+	- [ ] Controls overlay minimal; audio button clear state
+	- [ ] Heat meter behavior per overheat policy (hidden or expanded)
+- [ ] Testing & Dev
+	- [ ] URL flags: `mode=vertical`, `wave=N`, `skipIntro=1`, `zoom`, `speed`, `patterns`
+	- [ ] Dev overlays: path/formation debug, spawn boxes, safe lanes
+	- [ ] Performance: pooled projectiles/VFX; draw batching; DPR QA
+	- [ ] Fairness: prox-box no-spawn; minimum time-to-impact checks
+	- [ ] Mobile/touch ergonomics + safe-area QA
+
 #### Enemies (Core Archetypes)
 - [ ] Flanker (fast, circle-strafe behavior; short windup dash)
 	- [ ] Polish: dash telegraph, afterimage trail, distinct audio swish
@@ -130,32 +180,36 @@ Tip: For partial implementations, leave boxes unchecked, but add a short note af
 ---
 
 ## Recommended next steps (keep in sync with updates above)
+1) Vertical Stage scaffold
+	- Arena mode `vertical`, scrolling parallax, camera zoom-out, gutters/bounds
+	- Dev URL flags (`mode`, `wave`, `skipIntro`, `zoom`, `speed`, `patterns`)
 
-1) Build the Elite framework
-	 - Data: affix defs (name, color, stat mods, onSpawn/onDeath hooks)
-	 - Code: apply at spawn in `entities/enemy.js`; decorate draw; cap stacks
-	 - UX: name tag + outline + spawn stinger
+2) Controls + Ship behavior
+	- Fixed-forward firing (mouse/touch hold to fire)
+	- Movement (WASD/Arrows/Left stick; right mouse hold or touch drag)
+	- Accel/drag + clamping; pickup magnetization
 
-2) Implement Boss System and The Overseer
-	 - System: phases, HP bar, arena lock, telegraph timeline
-	 - Patterns: spiral volleys, sweeping beam with pre-beam sight, add-wave summon
-	 - Files to touch: `scenes/wave.js` (phase control), `entities/enemy.js` (boss type), `entities/enemyShot.js` (patterns), `ui/hud.js` (boss bar)
+3) Cinematics
+	- Intro ship reveal + zoom; Outro dock + revert to ring mode
+	- Letterbox + SFX polish
 
-3) Weapon slots + first new weapon (Shotgun)
-	 - Add weapon interface (fire(), heat, ammo hooks) and swap input/UI
-	 - Balance: pellet count, spread, falloff; new shop card for Shotgun
+4) Formation primitives + timeline
+	- Implement 5–6 formations and a simple stage DSL; smoke test wave 5
+	- Fairness: prox-box and min-TTI guards
 
-4) New enemy archetype: Artillery
-	 - Keep distance AI, arcing projectile with ground AOE decal + slow
-	 - Fairness: visible arc hint, AOE warn ring, min time-to-impact
+5) Boss — The Overseer (vertical)
+	- Entrance, phases, curtains/lasers with safe lanes; HP bar alignment
+	- Bullet-clear + reward burst on defeat
 
-5) Ability: Dash/Blink
-	 - Short i-frames, cancel window, ability ring UI; cooldown tuning
-	 - Synergy: dash through shots to reflect small projectiles (later)
+6) Overheat policy
+	- Decide and implement (disabled vs. expanded cap + faster cooldown)
+	- Update HUD behavior in stage
 
-6) Pattern library foundation
-	 - Reusable emitters for spiral/ring/wave; parameters per caller
-	 - Hook into enemies, elites, and bosses as building blocks
+7) QA + Performance
+	- DPR/safe-area QA; input ergonomics; pooled projectiles/VFX; batching
 
-Once the above are stable, iterate on polish passes and expand to Missile pod, Homing shards, and Gravity Well.
+8) Polish passes
+	- VFX/SFX, subtle HUD pulses; parallax quality; pattern colorways
+
+After Vertical Stage ships, resume: Elite expansion, weapon slots (Shotgun), Artillery, Dash, and pattern library breadth.
 
