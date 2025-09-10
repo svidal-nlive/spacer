@@ -297,7 +297,7 @@ export const waveScene = {
     else if(this.state==='stage'){
       // Three simple formation beats, then bossIntro
       const fast = !!game.devPatternsFast;
-      const times = fast? [0.1,0.3,0.5,0.7,0.9,1.1] : [0.4,4.0,8.0,10.8,13.6,18.0];
+      const times = fast? [0.1,0.3,0.5,0.7,0.9,1.1,1.3,1.5] : [0.4,4.0,8.0,10.8,13.6,18.0,21.0,24.0];
       const pat = (game.devPattern||'').toLowerCase();
       const wants = (key)=> !pat || pat===key;
       // Beat 0: lane grunts
@@ -310,21 +310,28 @@ export const waveScene = {
       if(this.stageBeat===3 && this.stateT>=times[3]){ if(wants('zig')) spawnZigZagStrafers(); this.stageBeat=4; this.stateT=0; }
       // Beat 4: spiral swirl drop
       if(this.stageBeat===4 && this.stateT>=times[4]){ if(wants('swirl')) spawnSpiralSwirl(); this.stageBeat=5; this.stateT=0; }
+      // Beat 5: carriers + drones line
+      if(this.stageBeat===5 && this.stateT>=times[5]){ if(wants('carriers')) spawnCarriersAndDrones(); this.stageBeat=6; this.stateT=0; }
+      // Beat 6: mine lines (hazards: slow strikers posing as mines)
+      if(this.stageBeat===6 && this.stateT>=times[6]){ if(wants('mines')) spawnMineLines(); this.stageBeat=7; this.stateT=0; }
       // transition when field mostly clear after last beat
-      if(this.stageBeat>=5 && this.stateT>=times[5]){
+      if(this.stageBeat>=7 && this.stateT>=times[7]){
         // wait until few alive remain
         let alive=0; forEachEnemy(e=>{ if(e.active) alive++; });
         if(alive<=2){ this.state='bossIntro'; this.stateT=0; }
       }
     }
     else if(this.state==='bossIntro'){
-      // Let the cinematic breathe briefly, then spawn boss
-      const introDelay = game.devSkipIntro? 0.2 : 1.0;
+      // Letterbox lock-in beat + short curtain flicker
+      const introDelay = game.devSkipIntro? 0.2 : 1.1;
+      // gentle lock-in pulse (screen-edge glow)
+      if(this.stateT<0.4){ game.screenFlash = Math.max(game.screenFlash, 0.08); game.screenFlashColor = '#25d0ff'; }
       if(this.stateT>=introDelay && !bossActive()){
         spawnBoss();
       }
       if(bossActive()){
-        this.state='bossFight'; this.stateT=0;
+        // brief entrance settle
+        if(this.stateT>=introDelay+0.35){ this.state='bossFight'; this.stateT=0; }
       }
     }
     else if(this.state==='bossFight'){
@@ -340,7 +347,7 @@ export const waveScene = {
         try{ const a = getArena(); if(a?.name==='vertical'){ this._outroSpeedFrom = a.speed; } }catch{}
       }
     }
-    else if(this.state==='bossOutro'){
+  else if(this.state==='bossOutro'){
       // perform bullet-clear and reward auto-collect early in outro
       if(this.stateT<0.2){ try{ bulletClear(); }catch{} }
       // vertical: gently slow autoscroll and nudge player upward like docking
@@ -356,8 +363,9 @@ export const waveScene = {
           forEachPickup(p=>{ const ox = game.playerPos.x, oy = game.playerPos.y; const dx = ox - p.x, dy = oy - p.y; const d = Math.hypot(dx,dy) || 1; const pull = 260*dt; p.x += (dx/d)*pull; p.y += (dy/d)*pull; });
         }
       }catch{}
-      // ease out letterbox midway
-      if(this.stateT>=0.4){ triggerLetterboxOut(0.6); }
+  // ease out letterbox midway; add dual shockwave hints (using existing VFX ring)
+  if(this.stateT>=0.4){ triggerLetterboxOut(0.6); spawnPulsarFX(); }
+  if(this.stateT>=0.6){ spawnPulsarFX(); }
       // at end, revert to ring
       if(this.stateT>=0.8){
         // restore vertical scroll speed for next stage usage
@@ -565,6 +573,19 @@ export const waveScene = {
     ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.stroke();
     ctx.setLineDash([]); ctx.globalAlpha = 1; ctx.restore();
   }
+  // Diagnostics overlay: FPS, DPR, canvas/viewport sizes, aim cone
+  if(game.devDiagnosticsOverlay){
+    const dprD = window.devicePixelRatio||1; ctx.save(); ctx.resetTransform(); ctx.scale(dprD,dprD);
+    const wCSS = canvas.width/dprD, hCSS = canvas.height/dprD;
+    // FPS estimate
+    const now = performance.now(); this._fpsTimes = this._fpsTimes||[]; this._fpsTimes.push(now); while(this._fpsTimes.length>0 && now - this._fpsTimes[0] > 1000) this._fpsTimes.shift();
+    const fps = this._fpsTimes.length;
+    ctx.fillStyle = '#b7f3ff'; ctx.font='11px system-ui,sans-serif';
+    ctx.fillText(`FPS ${fps}  DPR ${dprD.toFixed(2)}  ${Math.round(canvas.width)}x${Math.round(canvas.height)} px`, 8, 14);
+    // auto-fire range ring if enabled
+    if(game.autoFire){ ctx.globalAlpha=0.12; ctx.strokeStyle='#25d0ff'; ctx.lineWidth=2; ctx.beginPath(); const pb = getPlayableScreenBounds(); const cx=(pb.x+pb.width/2)*dprD, cy=(pb.y+pb.height/2)*dprD; ctx.arc(cx, cy, game.autoRange, 0, Math.PI*2); ctx.stroke(); ctx.globalAlpha=1; }
+    ctx.restore();
+  }
   // GO sweep overlay during gated intro
   if(this._gateActive && game.arenaMode==='vertical' && this.state==='stage'){
     const k = Math.min(1, this._gateT / Math.max(0.001, this._gateDur));
@@ -636,6 +657,28 @@ function spawnSpiralSwirl(){
   for(let i=0;i<count;i++){
     const a = off + (i/count)*Math.PI*2; const x = Math.cos(a)*rad; const y = -360 + Math.sin(a)*60;
     spawnEnemyAt(x, y, 'grunt');
+  }
+}
+
+// New: Carriers + Drones (carriers are tanks with escort strikers)
+function spawnCarriersAndDrones(){
+  const cols = 2; const sep = 180; const baseY = -360;
+  for(let i=0;i<cols;i++){
+    const x = i===0? -sep/2 : sep/2; const y = baseY;
+    // carrier (tank)
+    spawnEnemyAt(x, y, 'tank');
+    // drones
+    spawnEnemyAt(x-40, y-30, 'striker');
+    spawnEnemyAt(x+40, y-30, 'striker');
+  }
+}
+
+// New: Mine lines (slow strikers spaced across a band)
+function spawnMineLines(){
+  const bandY = -320; const cols = 6; const span = 360; const startX = -span/2;
+  for(let i=0;i<cols;i++){
+    const x = startX + i*(span/(cols-1));
+    spawnEnemyAt(x, bandY, 'striker');
   }
 }
 

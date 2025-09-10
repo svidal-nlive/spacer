@@ -63,6 +63,8 @@ try{
   const pat = params.get('pattern'); if(pat){ game.devPattern = pat; }
   // Formation overlay: ?form=1 to show spawn boxes & lanes
   if(params.get('form')==='1'){ game.devFormationOverlay = true; }
+  // Diagnostics overlay: ?diag=1 to show FPS/DPR/fairness rings
+  if(params.get('diag')==='1'){ game.devDiagnosticsOverlay = true; }
 }catch{ /* no-op */ }
 
 // Enforce ability bars in top gutter by default, overriding any saved preference
@@ -206,6 +208,7 @@ function showDevOverlay(){
   const togglePause = ()=>{ game.devPause = !game.devPause; };
   const togglePatterns = ()=>{ game.devPatternsFast = !game.devPatternsFast; };
   const toggleForm = ()=>{ game.devFormationOverlay = !game.devFormationOverlay; };
+  const toggleDiag = ()=>{ game.devDiagnosticsOverlay = !game.devDiagnosticsOverlay; };
   uiButtons.show([
   { label:'-10', title:'Wave -10', onClick: minus10, testid:'btn-wave--10' },
   { label:'-1', title:'Wave -1', onClick: minus1, testid:'btn-wave--1' },
@@ -216,6 +219,7 @@ function showDevOverlay(){
   { label: game.devPause? 'Resume':'Pause', title:'Dev Pause (no overlay)', onClick: togglePause, variant:'pill', testid:'btn-dev-pause' },
   { label: game.devPatternsFast? 'Patterns✓':'Patterns', title:'Speed Stage Beats', onClick: togglePatterns, variant:'pill', testid:'btn-dev-patterns' },
   { label: game.devFormationOverlay? 'Form✓':'Form', title:'Show Formation Overlay', onClick: toggleForm, variant:'pill', testid:'btn-dev-form' },
+  { label: game.devDiagnosticsOverlay? 'Diag✓':'Diag', title:'Diagnostics Overlay', onClick: toggleDiag, variant:'pill', testid:'btn-dev-diag' },
   { label:'Back', title:'Back', onClick: back, variant:'pill', testid:'btn-back' },
   ], { position:'bottom-right', caption:'Dev — Wave Jump' });
 }

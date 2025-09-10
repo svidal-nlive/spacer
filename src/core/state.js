@@ -38,6 +38,8 @@ export const game = {
   devPattern: null, // e.g., 'lanes' | 'wedge' | 'tanks' | 'swirl'
   // dev formation overlay (draw spawn boxes & safe lanes)
   devFormationOverlay: false,
+  // diagnostics overlay (FPS/DPR/canvas, fairness rings)
+  devDiagnosticsOverlay: false,
   // vertical-stage overheat policy: 'expanded' | 'disabled'
   verticalHeatPolicy: 'expanded',
   // transient UI timers
