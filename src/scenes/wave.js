@@ -329,15 +329,34 @@ export const waveScene = {
         // letterbox out later in outro
         // reset player world pos when leaving topdown
         game.playerPos.x = 0; game.playerPos.y = 0;
+        // cache current vertical scroll speed to restore later; we'll slow it during outro for a docking feel
+        try{ const a = getArena(); if(a?.name==='vertical'){ this._outroSpeedFrom = a.speed; } }catch{}
       }
     }
     else if(this.state==='bossOutro'){
       // perform bullet-clear and reward auto-collect early in outro
       if(this.stateT<0.2){ try{ bulletClear(); }catch{} }
+      // vertical: gently slow autoscroll and nudge player upward like docking
+      try{
+        const a = getArena();
+        if(a?.name==='vertical'){
+          const e = Math.min(1, this.stateT/0.8); const ease = e*e*(3-2*e);
+          const from = (this._outroSpeedFrom??a.speed);
+          a.speed = Math.max(0, from * (1 - ease));
+          // move player toward slight negative Y (upward) smoothly
+          const targetY = -50; game.playerPos.y += (targetY - game.playerPos.y) * Math.min(1, 2.5*dt);
+          // attract pickups toward player for auto-collect sweep
+          forEachPickup(p=>{ const ox = game.playerPos.x, oy = game.playerPos.y; const dx = ox - p.x, dy = oy - p.y; const d = Math.hypot(dx,dy) || 1; const pull = 260*dt; p.x += (dx/d)*pull; p.y += (dy/d)*pull; });
+        }
+      }catch{}
       // ease out letterbox midway
       if(this.stateT>=0.4){ triggerLetterboxOut(0.6); }
       // at end, revert to ring
-      if(this.stateT>=0.8){ disableBossBarrier(); setArena('ring'); setInputScheme('twinStick'); }
+      if(this.stateT>=0.8){
+        // restore vertical scroll speed for next stage usage
+        try{ const a = getArena(); if(a?.name==='vertical' && this._outroSpeedFrom!=null){ a.speed = this._outroSpeedFrom; } }catch{}
+        disableBossBarrier(); setArena('ring'); setInputScheme('twinStick');
+      }
       if(this.stateT>=0.9){ this.state='end'; this.stateT=0; concludeWave(); return; }
     }
 
@@ -666,7 +685,21 @@ function drawCooldownBar(x,y,w,h,pct,color,flash){
   ctx.strokeStyle = '#1e2f45'; ctx.strokeRect(x+0.5,y+0.5,w-1,h-1);
   // fill
   ctx.fillStyle = color; ctx.fillRect(x,y,Math.max(0,Math.min(1,pct))*w,h);
-  if(flash>0 && pct>=1){ ctx.globalAlpha = Math.min(0.7, flash); ctx.fillStyle=color; ctx.fillRect(x-2,y-2,w+4,h+4); ctx.globalAlpha=1; }
+  // subtle "ready" pulse: soft glow + sheen sweep instead of hard flash block
+  if(flash>0 && pct>=1){
+    const t = (performance.now?.()/1000)||0; const pulse = 0.5 + 0.5*Math.sin(t*6.0);
+    const a = Math.min(0.6, 0.25 + flash*0.5) * pulse;
+    // outer glow
+    ctx.save(); ctx.globalAlpha = a; ctx.shadowColor = color; ctx.shadowBlur = 12; ctx.fillStyle = color + '22';
+    ctx.fillRect(x-1,y-1,w+2,h+2); ctx.restore();
+    // sheen sweep
+    const k = (t*0.8) % 1; const sx = x + k*w;
+    const grad = ctx.createLinearGradient(sx-18, y, sx+18, y);
+    grad.addColorStop(0, 'rgba(255,255,255,0)');
+    grad.addColorStop(0.5, 'rgba(255,255,255,0.25)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.save(); ctx.globalAlpha = Math.min(0.45, flash); ctx.fillStyle = grad; ctx.fillRect(x,y,w,h); ctx.restore();
+  }
 }
 
 function drawAbilityRings(){

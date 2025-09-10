@@ -23,24 +23,24 @@ See [`dev_checlist.md`](./dev_checlist.md) for the current development roadmap a
 
 1. Install dependencies:
 
-	```bash
-	npm install
-	```
+ ```bash
+ npm install
+ ```
 
-2. Start the dev server:
+1. Start the dev server:
 
-	```bash
-	npm run dev
-	```
+ ```bash
+ npm run dev
+ ```
 
-	Open the printed URL in your browser.
+ Open the printed URL in your browser.
 
-3. Preview production build:
+1. Preview production build:
 
-	```bash
-	npm run build
-	npm run preview -- --port 5173 --strictPort
-	```
+ ```bash
+ npm run build
+ npm run preview -- --port 5173 --strictPort
+ ```
 
 ## Local Docker Testing
 

@@ -20,7 +20,6 @@ This guide explains how to build, test, and deploy Spacer for local development 
 
    - Open the printed URL in your browser (default: [http://localhost:5173](http://localhost:5173)).
 
-
 3. **Preview production build**
 
    ```bash
@@ -29,7 +28,6 @@ This guide explains how to build, test, and deploy Spacer for local development 
    ```
 
    - This serves the built files as they would appear in production.
-
 
 4. **Run Playwright snapshots (optional visual regression)**
 
@@ -43,7 +41,6 @@ This guide explains how to build, test, and deploy Spacer for local development 
 
 ## Docker-based Local Testing
 
-
 1. **Build and run with local code (no CI delay):**
 
    ```bash
@@ -51,7 +48,6 @@ This guide explains how to build, test, and deploy Spacer for local development 
    ```
 
    - Uses `docker-compose.yml` + `docker-compose.local.yml` to build from your current code and start the container.
-
 
 2. **Stop and clean up containers/images:**
 
@@ -63,7 +59,6 @@ This guide explains how to build, test, and deploy Spacer for local development 
 
 ## Pushing Changes & CI/CD
 
-
 1. **Commit and push your changes:**
 
    ```bash
@@ -72,7 +67,6 @@ This guide explains how to build, test, and deploy Spacer for local development 
 
    - This will commit all changes and push to the remote repository. CI will build and deploy automatically.
 
-
 2. **Force a CI redeploy (no code changes):**
 
    ```bash
@@ -80,7 +74,6 @@ This guide explains how to build, test, and deploy Spacer for local development 
    ```
 
    - Creates an empty commit to trigger CI/CD pipeline.
-
 
 3. **Trigger CI workflow manually (requires GitHub CLI):**
 
@@ -94,7 +87,6 @@ This guide explains how to build, test, and deploy Spacer for local development 
 
 ## Additional Makefile Targets
 
-
 - `make build` — Installs dependencies and builds the project.
 - `make preview` — Serves the production build locally.
 - `make up` — Runs the published image from GHCR (production-like test).
@@ -105,7 +97,6 @@ This guide explains how to build, test, and deploy Spacer for local development 
 
 ---
 
-
 ## Notes
 
 - All Docker Compose commands use the `spacer` service and the external `web` network for Traefik routing.
@@ -114,7 +105,6 @@ This guide explains how to build, test, and deploy Spacer for local development 
 - See `README.md` for game overview and controls.
 
 ---
-
 
 ## Troubleshooting
 
