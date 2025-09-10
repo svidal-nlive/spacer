@@ -13,7 +13,8 @@ Tip: For partial implementations, leave boxes unchecked, but add a short note af
 ### A) Discussed but not yet implemented
 
 #### Vertical Stage (Boss Waves 5, 10, 15…)
-- [ ] Arena mode: `vertical` scaffold (stage lifecycle, pause/resume, revert to ring)
+- [x] Arena mode: `vertical` scaffold (mode switch, camera hook, basic scroll)
+	- [ ] Stage lifecycle (pause/resume) and clean revert to ring with cinematic
 	- [ ] Parallax scrolling background (2–3 layers), performance-batched
 	- [ ] Camera: zoom-out to ~0.8 during intro, subtle vertical bob; respect safe-area gutters
 	- [ ] Playable bounds: spawn culling and gutter avoidance
@@ -23,10 +24,11 @@ Tip: For partial implementations, leave boxes unchecked, but add a short note af
 	- [ ] Audio stingers + timing polish
 - [ ] Player Ship (controls + feel)
 	- [ ] Fixed-forward firing from ship nose (no cursor-aimed turret for this stage)
+	- [x] Input scheme stubs
 	- [ ] Inputs:
 		- [ ] Mouse/touch: click/tap to fire; hold = continuous fire
 		- [ ] Gamepad/keys: move ship (WASD/Arrows/Left stick)
-		- [ ] Right mouse held OR touch drag: move ship while held/dragging
+		- [ ] Right mouse held OR touch drag: move ship while held/dragging (stub present, needs nudge)
 	- [ ] Movement: accel/drag, clamp to bounds; magnetized pickups within small radius
 	- [ ] Abilities tuning: Pulsar radius/push; EMP stun/interrupt; bullet-clear rules
 	- [ ] Overheat policy (stage-local):
@@ -57,6 +59,7 @@ Tip: For partial implementations, leave boxes unchecked, but add a short note af
 	- [ ] Heat meter behavior per overheat policy (hidden or expanded)
 - [ ] Testing & Dev
 	- [ ] URL flags: `mode=vertical`, `wave=N`, `skipIntro=1`, `zoom`, `speed`, `patterns`
+		- Note: basic flags `arena` and `scheme` are wired; extend to planned names
 	- [ ] Dev overlays: path/formation debug, spawn boxes, safe lanes
 	- [ ] Performance: pooled projectiles/VFX; draw batching; DPR QA
 	- [ ] Fairness: prox-box no-spawn; minimum time-to-impact checks

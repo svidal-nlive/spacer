@@ -2,8 +2,8 @@
 import { canvas, ctx } from '../core/canvas.js';
 import { game } from '../core/state.js';
 import { input, keysHeld } from '../engine/input.js';
-import { getArena } from '../engine/arena.js';
-import { activeScheme } from '../engine/inputScheme.js';
+import { getArena, setArena } from '../engine/arena.js';
+import { activeScheme, setInputScheme } from '../engine/inputScheme.js';
 import { clamp } from '../core/rng.js';
 import { spawnBullet, updateBullets, drawBullets } from '../entities/bullet.js';
 import { spawnEnemy, spawnEnemyAt, updateEnemies, drawEnemies, forEachEnemy } from '../entities/enemy.js';
@@ -52,7 +52,7 @@ export const waveScene = {
     this.autoAbilityCd = 0;
   // If boss wave, kick off cinematic immediately so it’s apparent
   if(isBossWave()){
-  triggerLetterboxIn(0.8); enableBossBarrier(); game.arenaMode='topdown';
+  triggerLetterboxIn(0.8); enableBossBarrier(); setArena('vertical'); setInputScheme('verticalFixed');
   // Pre-position player below barrier so camera shift is evident (consider letterbox offset)
   const dpr = window.devicePixelRatio || 1;
   const yScreen = getBossBarrierScreenY(); // CSS px
@@ -87,8 +87,8 @@ export const waveScene = {
   // on-hit invulnerability decay
   if(game.invulnT>0) game.invulnT = Math.max(0, game.invulnT - dt);
 
-    // topdown free movement: WASD/Arrows (existing boss mode) or new vertical arena
-    if(game.arenaMode==='topdown' || game.arenaMode==='vertical'){
+  // topdown/vertical free movement: WASD/Arrows
+  if(game.arenaMode==='topdown' || game.arenaMode==='vertical'){
       const speed = 240; // px/s
       // keyboard state
       let { vx, vy } = (game.arenaMode==='vertical') ? activeScheme.getDesiredVelocity() : (function(){
@@ -164,8 +164,9 @@ export const waveScene = {
     }
     if(!game.overheated && input.firing && this.fireCooldown===0){
       const muzzle = 28;
-      const ox = (game.arenaMode==='topdown') ? game.playerPos.x : 0;
-      const oy = (game.arenaMode==='topdown') ? game.playerPos.y : 0;
+  const isTD = (game.arenaMode==='topdown' || game.arenaMode==='vertical');
+  const ox = isTD ? game.playerPos.x : 0;
+  const oy = isTD ? game.playerPos.y : 0;
       const aimAngle = (game.arenaMode==='vertical') ? activeScheme.getAimAngle() : input.aimAngle;
       const mx = ox + Math.cos(aimAngle)*muzzle; const my = oy + Math.sin(aimAngle)*muzzle;
       const spreadN = (game.powerups.spreadT>0)? 3 : 1; const spreadAngle = 0.15;
@@ -225,12 +226,12 @@ export const waveScene = {
       // move to clear once quota met
       if(this.spawned>=this.quota){ this.state='clear'; this.stateT=0; }
     }
-    else if(this.state==='clear'){
+  else if(this.state==='clear'){
       // wait for board to clear, then branch: boss wave or end
       if(alive===0){
         if(isBossWave()){
           // cinematic intro and barrier
-          triggerLetterboxIn(0.8); enableBossBarrier(); game.arenaMode='topdown'; this.state='bossIntro'; this.stateT=0;
+          triggerLetterboxIn(0.8); enableBossBarrier(); setArena('vertical'); setInputScheme('verticalFixed'); this.state='bossIntro'; this.stateT=0;
         } else {
           this.state='end'; this.stateT=0; concludeWave(); return;
         }
@@ -245,10 +246,10 @@ export const waveScene = {
         this.state='bossFight'; this.stateT=0;
       }
     }
-    else if(this.state==='bossFight'){
+  else if(this.state==='bossFight'){
       // gate until boss dies
       if(!bossActive()){
-        this.state='bossOutro'; this.stateT=0; triggerLetterboxOut(0.6); disableBossBarrier(); game.arenaMode='ring';
+        this.state='bossOutro'; this.stateT=0; triggerLetterboxOut(0.6); disableBossBarrier(); setArena('ring'); setInputScheme('twinStick');
         // reset player world pos when leaving topdown
         game.playerPos.x = 0; game.playerPos.y = 0;
       }
@@ -345,8 +346,9 @@ export const waveScene = {
   ctx.restore();
   // Heat ring at the playable center respecting render offset
   // Heat ring follows player in topdown, remains center in ring mode
-  const hx = (pb.x + pb.width/2) * dpr + (game.arenaMode==='topdown'? game.playerPos.x : 0);
-  const hy = (pb.y + pb.height/2) * dpr + game.player.y + (game.arenaMode==='topdown'? game.playerPos.y : 0);
+  const isTD = (game.arenaMode==='topdown' || game.arenaMode==='vertical');
+  const hx = (pb.x + pb.width/2) * dpr + (isTD? game.playerPos.x : 0);
+  const hy = (pb.y + pb.height/2) * dpr + game.player.y + (isTD? game.playerPos.y : 0);
   drawHeatRing(hx, hy, 30, game.heat/game.heatMax);
   // top bar with ability chips
   // compute a fade alpha for 2x badge: ease in first 0.5s, ease out last 0.5s
