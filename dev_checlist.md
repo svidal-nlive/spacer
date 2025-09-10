@@ -1,10 +1,40 @@
 # Developer Checklist — Spacer
 
+**All development work must follow the [instructions.md](./instructions.md) for building, testing, and pushing changes.**
+Refer to those instructions before starting any new feature, bugfix, or deployment.
+
 Keep this checklist up to date. Any time you add a feature (even partially), do both:
+
 - Move/mark the item into the correct section below and adjust its subtasks.
 - Update the "Recommended next steps" section just after the checklist to reflect the new reality.
 
 Tip: For partial implementations, leave boxes unchecked, but add a short note after the item like "(phase 1 done: spawn + visuals)".
+
+---
+
+## Verification — Wave 5 (Vertical Stage) vs boss_wave_expectation.md — 2025-09-10
+
+Observed OK
+
+- Vertical mode engages on wave 5 with parallax starfield and upward scroll.
+- Letterbox bars and boss barrier line appear; boss HP bar positions below the letterbox/top HUD.
+- Player movement uses keys and right-drag/touch nudge; fixed-forward firing works in vertical mode.
+- Heat tuned in vertical mode (slower heat gain, faster cooldown).
+- Stage timeline has simple beats (lanes → wedge → turret pods → zig-zag → swirl), then boss.
+- Boss fight active with telegraph sweep, summons, and HP bar; outro clears bullets and reverts to ring mode.
+
+Deviations / Omissions to address (updated after quick-pass)
+
+- Cinematic intro polish partially implemented: basic “GO” sweep + explicit input gating added; camera zoom now ~0.80 (within spec). Missing: ship-chassis reveal + clamp-on SFX, richer sweep visuals.
+- Overheat UI policy surfaced: HUD now respects verticalStage policy (expanded vs disabled). Missing: a toggle surface in settings or dev flags.
+- Overheat UI policy surfaced: HUD now respects verticalStage policy (expanded vs disabled). Added settings toggle and URL param (?heat=expanded|disabled).
+- Ability bars as “bars” in top-right not implemented; current on-canvas buttons exist. Subtle “ready” pulse TBD.
+- Formation breadth: carriers+drones, mine lines, and optional miniboss pre-boss not present yet.
+- Boss entrance lock-in theatrics not fully realized (screen clear cue, additional zoom tweak before lock, subtle pause beat).
+- Outro polish: reward auto-collect sweep, scroll slow-down, and docking cinematic are minimal/absent.
+- Minor: muzzle/nozzle flash added for vertical mode (basic rectangle flash). Could use sprite/pulse polish later.
+
+Action items added below in relevant sections.
 
 ---
 
@@ -13,154 +43,170 @@ Tip: For partial implementations, leave boxes unchecked, but add a short note af
 ### A) Discussed but not yet implemented
 
 #### Vertical Stage (Boss Waves 5, 10, 15…)
+
 - [x] Arena mode: `vertical` scaffold (mode switch, camera hook, basic scroll)
-	- [x] Parallax backdrop pass 1 (starfield)
-	- [ ] Stage lifecycle (pause/resume) and clean revert to ring with cinematic
-	- [ ] Camera: zoom-out to ~0.8 during intro, subtle vertical bob; respect safe-area gutters
-	- [ ] Playable bounds: spawn culling and gutter avoidance
+  - [x] Parallax backdrop pass 1 (starfield)
+  - [ ] Stage lifecycle (pause/resume) and clean revert to ring with cinematic
+  - [ ] Camera: zoom-out to ~0.8 during intro, subtle vertical bob; respect safe-area gutters
+  - [ ] Playable bounds: spawn culling and gutter avoidance
 - [ ] Cinematics (intro/outro)
-	- [ ] Intro: letterbox in; turret slides down; ship chassis reveal + clamp-on SFX; zoom-out; “GO” sweep
-	- [ ] Outro: bullet-clear, reward auto-collect; zoom-in; ship docks; revert to ring mode
-	- [ ] Audio stingers + timing polish
+  - [ ] Intro: letterbox in; turret slides down; ship chassis reveal + clamp-on SFX; zoom-out; “GO” sweep
+    - [ ] Gate input for first ~2.5s; enable on “GO” sweep end
+    - [ ] Tune zoom to 0.75–0.85 target (currently ~0.90)
+  - [ ] Outro: bullet-clear, reward auto-collect; zoom-in; ship docks; revert to ring mode
+    - [ ] Scroll slow-down and docking animation
+  - [ ] Audio stingers + timing polish
 - [ ] Player Ship (controls + feel)
-	- [ ] Fixed-forward firing from ship nose (no cursor-aimed turret for this stage)
-	- [x] Input scheme stubs
-	- [ ] Inputs:
-		- [ ] Mouse/touch: click/tap to fire; hold = continuous fire
-		- [ ] Gamepad/keys: move ship (WASD/Arrows/Left stick)
-		- [ ] Right mouse held OR touch drag: move ship while held/dragging (stub present, needs nudge)
-	- [ ] Movement: accel/drag, clamp to bounds; magnetized pickups within small radius
-		- [x] Accel/drag and clamp
-	- [ ] Abilities tuning: Pulsar radius/push; EMP stun/interrupt; bullet-clear rules
-	- [ ] Overheat policy (stage-local):
-		- [ ] Decide: disable overheat entirely OR raise cap significantly (e.g., +200%) with faster cooldown
-		- [ ] Implement toggle + UI behavior (hide/resize heat meter when disabled or expanded)
+  - [ ] Fixed-forward firing from ship nose (no cursor-aimed turret for this stage)
+  - [x] Input scheme stubs
+  - [ ] Inputs:
+    - [ ] Mouse/touch: click/tap to fire; hold = continuous fire
+    - [ ] Gamepad/keys: move ship (WASD/Arrows/Left stick)
+    - [ ] Right mouse held OR touch drag: move ship while held/dragging (stub present, needs nudge)
+  - [ ] Movement: accel/drag, clamp to bounds; magnetized pickups within small radius
+    - [x] Accel/drag and clamp
+  - [ ] Abilities tuning: Pulsar radius/push; EMP stun/interrupt; bullet-clear rules
+  - [ ] Overheat policy (stage-local):
+    - [ ] Decide: disable overheat entirely OR raise cap significantly (e.g., +200%) with faster cooldown
+  - [ ] Implement toggle + UI behavior (hide/resize heat meter when disabled or expanded)
+  - [ ] Nozzle muzzle flash/spark at barrel in vertical mode (visual feedback)
 - [ ] Formation system & stage timeline
-	- [ ] Timeline DSL for beats (time windows, formation type, params)
-	- [ ] Formation primitives:
-		- [ ] Lanes (3–5 lanes; staggered; cadence fire)
-		- [ ] V/Wedge (corner entries, converge + aimed spreads)
-		- [ ] Zig-zag strafers (direction changes fire windows)
-		- [ ] Spirals/Swirls (orbit + slow drops; corkscrew variant later)
-		- [ ] Carriers + Drones (carrier sine path; drone releases)
-		- [ ] Dive bombers (telegraph + curved dash)
-		- [ ] Turret pods (hold position 2–3s; barrage; withdraw)
-	- [x] Minimal stage beats wired for wave 5 (lanes, wedge, tanks)
-		- [ ] Mine lines (horizontal/diagonal; proximity/warn ring)
-	- [ ] Pattern emitters: aimed/fan/ring/laser/bomb; fairness min-TTI
-	- [ ] Optional miniboss beat (pickup carrier or weakpoint pod)
+  - [ ] Timeline DSL for beats (time windows, formation type, params)
+  - [ ] Formation primitives:
+    - [ ] Lanes (3–5 lanes; staggered; cadence fire)
+    - [ ] V/Wedge (corner entries, converge + aimed spreads)
+    - [ ] Zig-zag strafers (direction changes fire windows)
+    - [ ] Spirals/Swirls (orbit + slow drops; corkscrew variant later)
+    - [ ] Carriers + Drones (carrier sine path; drone releases)
+    - [ ] Dive bombers (telegraph + curved dash)
+    - [ ] Turret pods (hold position 2–3s; barrage; withdraw)
+  - [x] Minimal stage beats wired for wave 5 (lanes, wedge, tanks)
+  - [ ] Mine lines (horizontal/diagonal; proximity/warn ring)
+  - [ ] Carriers + drones beat
+  - [ ] Optional miniboss pre-boss beat
+  - [ ] Pattern emitters: aimed/fan/ring/laser/bomb; fairness min-TTI
+  - [ ] Optional miniboss beat (pickup carrier or weakpoint pod)
 - [ ] Boss — The Overseer (vertical rework)
-	- [ ] Entrance sequence + lock-in
-	- [ ] Phase set (1–4) orchestrating formations → direct aggression
-	- [ ] Curtains/lasers with safe lanes; HP bar below HUD and below letterbox
-	- [ ] Defeat sequence: dual shockwaves, bullet-clear, reward burst
+  - [ ] Entrance sequence + lock-in
+  - [ ] Phase set (1–4) orchestrating formations → direct aggression
+  - [ ] Curtains/lasers with safe lanes; HP bar below HUD and below letterbox
+  - [ ] Defeat sequence: dual shockwaves, bullet-clear, reward burst
 - [ ] UI/HUD
-	- [ ] Ability bars top-right; subtle ready pulses (no harsh flash)
-	- [ ] Boss bar alignment under letterbox; responsive at low DPR
-	- [ ] Controls overlay minimal; audio button clear state
-	- [ ] Heat meter behavior per overheat policy (hidden or expanded)
-		- [x] Temporary: gentler heat rate + faster cooldown in vertical mode
+  - [ ] Ability bars top-right; subtle ready pulses (no harsh flash)
+    - [ ] Convert current buttons to a proper bar-style HUD element for stage mode
+  - [ ] Boss bar alignment under letterbox; responsive at low DPR
+  - [ ] Controls overlay minimal; audio button clear state
+  - [ ] Heat meter behavior per overheat policy (hidden or expanded)
+    - [x] Temporary: gentler heat rate + faster cooldown in vertical mode
 - [ ] Testing & Dev
-	- [ ] URL flags: `mode=vertical`, `wave=N`, `skipIntro=1`, `zoom`, `speed`, `patterns`
-		- Note: basic flags `arena` and `scheme` are wired; extend to planned names
-	- [ ] Dev overlays: path/formation debug, spawn boxes, safe lanes
-	- [ ] Performance: pooled projectiles/VFX; draw batching; DPR QA
-	- [ ] Fairness: prox-box no-spawn; minimum time-to-impact checks
-	- [ ] Mobile/touch ergonomics + safe-area QA
+  - [ ] URL flags: `mode=vertical`, `wave=N`, `skipIntro=1`, `zoom`, `speed`, `patterns`
+    - Note: basic flags `arena` and `scheme` are wired; extend to planned names
+  - [ ] Dev overlays: path/formation debug, spawn boxes, safe lanes
+  - [ ] Performance: pooled projectiles/VFX; draw batching; DPR QA
+  - [ ] Fairness: prox-box no-spawn; minimum time-to-impact checks
+  - [ ] Mobile/touch ergonomics + safe-area QA
 
 #### Enemies (Core Archetypes)
+
 - [ ] Flanker (fast, circle-strafe behavior; short windup dash)
-	- [ ] Polish: dash telegraph, afterimage trail, distinct audio swish
+  - [ ] Polish: dash telegraph, afterimage trail, distinct audio swish
 - [ ] Artillery (keeps distance; lobbed arcing shots with AOE on impact)
-	- [ ] Polish: ground impact decal, soft screen bump on close hits
+  - [ ] Polish: ground impact decal, soft screen bump on close hits
 - [ ] Support (heals/shields allies; prioritizes elites/bosses)
-	- [ ] Polish: beam link VFX, heal tick SFX, colorblind-safe cue
+  - [ ] Polish: beam link VFX, heal tick SFX, colorblind-safe cue
 - [ ] Burster (suicide diver; on-death radial shards)
-	- [ ] Polish: fuse glow, expanding warning ring, shard twinkle SFX
+  - [ ] Polish: fuse glow, expanding warning ring, shard twinkle SFX
 
 #### Enemy Elites & Modifiers
+
 - [x] Elite framework (affixes applied on spawn: Shielded, Swift, Juggernaut, Cold, Volatile; weighted, optional stacking later waves)
-	- [x] Basic: stat mods, per-wave chance scaling, spawn stinger
-	- [x] UX: elite outline + name tag fade
-	- [x] Hooks: unique death burst per affix (Cold, Volatile implemented; others pending)
-	- [ ] More affixes: Cold, Volatile (not implemented)
+  - [x] Basic: stat mods, per-wave chance scaling, spawn stinger
+  - [x] UX: elite outline + name tag fade
+  - [x] Hooks: unique death burst per affix (Cold, Volatile implemented; others pending)
+  - [ ] More affixes: Cold, Volatile (not implemented)
 - [ ] Affix pool with stacking caps and weighted rarity
-	- [ ] Polish: spawn stinger SFX, subtle screen vignette while an elite is alive
+  - [ ] Polish: spawn stinger SFX, subtle screen vignette while an elite is alive
 
 #### Bosses
+
 - [ ] Boss system: multi-phase, HP bar, arena locks, telegraphs
-	- [ ] Polish: intro banner, phase transition SFX, shake with cooldown
+  - [ ] Polish: intro banner, phase transition SFX, shake with cooldown
 - [ ] Boss 1 — The Overseer (spiral barrages, sweeping beam, minion summon)
-	- [ ] Polish: beam charge-up light, phase voice ping, distinctive theme loop
+  - [ ] Polish: beam charge-up light, phase voice ping, distinctive theme loop
 - [ ] Boss 2 — The Devourer (vacuum pull, vomit mines, armor plates weakpoints)
-	- [ ] Polish: weakpoint sparkle cue, mine hiss loop, damage armor flakes
+  - [ ] Polish: weakpoint sparkle cue, mine hiss loop, damage armor flakes
 
 #### Projectile Types & Patterns
+
 - [ ] Homing shards (slow correction; reacquisition on miss)
-	- [ ] Polish: seek trail particles, homing-tightness upgrade hook
+  - [ ] Polish: seek trail particles, homing-tightness upgrade hook
 - [ ] Boomerang blades (out-and-back path; pierce 1 on outbound)
-	- [ ] Polish: Doppler whoosh, spin sprite
+  - [ ] Polish: Doppler whoosh, spin sprite
 - [ ] Mines (sticky on arena; arm → blink → explode into rings)
-	- [ ] Polish: blinking LED cadence, danger marker text
+  - [ ] Polish: blinking LED cadence, danger marker text
 - [ ] Laser sweepers (enemy line lasers with warning sweep arcs)
-	- [ ] Polish: pre-beam laser sight, bloom on hit, lingering scorch
+  - [ ] Polish: pre-beam laser sight, bloom on hit, lingering scorch
 - [ ] Pattern library (spiral, rings, waves, cones, Lissajous)
-	- [ ] Polish: pattern-specific colorways and tempo
+  - [ ] Polish: pattern-specific colorways and tempo
 
 #### Player Weapons & Systems
+
 - [ ] Weapon slots and switching (primary/secondary with unique stats)
-	- [ ] Polish: quick-swap SFX, small HUD slot icons
+  - [ ] Polish: quick-swap SFX, small HUD slot icons
 - [ ] Shotgun (spread, falloff; heat-efficient burst)
-	- [ ] Polish: muzzle flash cones, pellet tracers
+  - [ ] Polish: muzzle flash cones, pellet tracers
 - [ ] Railgun (charge → piercing beam; overheat-heavy)
-	- [ ] Polish: screen scanline shimmer, impact sparks
+  - [ ] Polish: screen scanline shimmer, impact sparks
 - [ ] Missile pod (lock-on n targets, salvo cadence)
-	- [ ] Polish: lock boxes UI, smoke trails, mini explosions
+  - [ ] Polish: lock boxes UI, smoke trails, mini explosions
 - [ ] DoT ammo (burn, shock, slow procs hooked to upgrades)
-	- [ ] Polish: status icons on enemies, tick SFX
+  - [ ] Polish: status icons on enemies, tick SFX
 
 #### Player Special Abilities
+
 - [ ] Dash/Blink (i-frames, cancel shots briefly)
-	- [ ] Polish: chromatic streak, subtle time stretch
+  - [ ] Polish: chromatic streak, subtle time stretch
 - [ ] Time Dilation (slow nearby projectiles/enemies)
-	- [ ] Polish: ripple shader, lowpass filter on audio
+  - [ ] Polish: ripple shader, lowpass filter on audio
 - [ ] Kinetic Barrier (temporary shield that reflects shots)
-	- [ ] Polish: hex shader, ping when reflecting
+  - [ ] Polish: hex shader, ping when reflecting
 - [ ] Gravity Well (pull + DoT; combo with Pulsar/EMP)
-	- [ ] Polish: spiral particles, bass rumble
+  - [ ] Polish: spiral particles, bass rumble
 - [ ] Drone Buddy (orbiting helper with its own upgrade path)
-	- [ ] Polish: chirp SFX, tiny LED ring to indicate state
+  - [ ] Polish: chirp SFX, tiny LED ring to indicate state
 
 #### Enemy AI & Encounters
+
 - [ ] Formations & waves (V, line, pincer; timed mixes)
-	- [ ] Polish: entrance telegraphs, formation VO callout
+  - [ ] Polish: entrance telegraphs, formation VO callout
 - [ ] Behavior layers (kite, focus-fire, retreat to heal)
-	- [ ] Polish: intent emotes over heads, subtle path ribbons
+  - [ ] Polish: intent emotes over heads, subtle path ribbons
 - [ ] Spawners (corner/edge portals with cadence and quotas)
-	- [ ] Polish: portal VFX, spawn hum loop
+  - [ ] Polish: portal VFX, spawn hum loop
 
 #### Meta & Progression (optional for v1)
+
 - [ ] Unlock tracks (new weapons/abilities via milestones)
-	- [ ] Polish: unlock splash card, confetti burst
+  - [ ] Polish: unlock splash card, confetti burst
 - [ ] Daily/Weekly modifiers (mutators, score boards)
-	- [ ] Polish: seed code display, special banner
+  - [ ] Polish: seed code display, special banner
 
 ---
 
 ### B) Started but unfinished
 
 - [ ] Shop UI responsiveness — header wrapping and layout guards
-	- Note: initial pass done; continue visual QA across extreme DPRs
-	- [ ] Polish: caption typography scale, hit-test padding tuning
+  - Note: initial pass done; continue visual QA across extreme DPRs
+  - [ ] Polish: caption typography scale, hit-test padding tuning
 - [ ] Autonomous Laser (intercepts enemy shots)
-	- Note: core implemented; expand pierce tiers and heat interaction
-	- [ ] Polish: beam start/end caps, harmonic SFX layers
+  - Note: core implemented; expand pierce tiers and heat interaction
+  - [ ] Polish: beam start/end caps, harmonic SFX layers
 - [ ] AUTO test mode (range gate + grid)
-	- Note: works; add dev-only gating and a settings hotkey
-	- [ ] Polish: grid fade pulse, dashed arc style toggle
+  - Note: works; add dev-only gating and a settings hotkey
+  - [ ] Polish: grid fade pulse, dashed arc style toggle
 - [ ] Fairness safeguards (invuln window, aim error, cadence desync)
-	- Note: in; add per-difficulty tuning knobs
-	- [ ] Polish: debug overlays for fairness metrics
+  - Note: in; add per-difficulty tuning knobs
+  - [ ] Polish: debug overlays for fairness metrics
 
 ---
 
@@ -186,29 +232,34 @@ Tip: For partial implementations, leave boxes unchecked, but add a short note af
 ---
 
 ## Recommended next steps (keep in sync with updates above)
+
 1) Vertical stage wave-5 finish line
-	- Camera polish: intro zoom-out, subtle bob; skipIntro flag
-		- [x] Subtle bob (vertical mode)
-		- [x] skipIntro flag
-	- Bounds: spawn culling; prox-box no-spawn; min-TTI check
-		- [x] Prox-box no-spawn + min-TTI backoff
-	- Input: right-drag/touch-drag nudge; touch fire hold; pickup magnetization
-		- [x] Touch-drag also nudges
-		- [x] Right-drag nudge (basic)
-		- [x] Pickup magnetization toward player
-	- HUD: decide overheat policy (hide vs. expanded), reflect in heat UI
-	- Stage beats: add 1–2 more simple formations; add fairness guards
 
-2) Boss intro and outro cinematics
-	- [x] Intro/outro zoom tweens (base)
-	- [x] Bullet-clear on outro start; revert to ring
-	- Boss entrance lock-in; reward burst polish
+- Camera polish: intro zoom-out, subtle bob; skipIntro flag
+- [x] Subtle bob (vertical mode)
+- [x] skipIntro flag
+- Bounds: spawn culling; prox-box no-spawn; min-TTI check
+- [x] Prox-box no-spawn + min-TTI backoff
+- Input: right-drag/touch-drag nudge; touch fire hold; pickup magnetization
+- [x] Touch-drag also nudges
+- [x] Right-drag nudge (basic)
+- [x] Pickup magnetization toward player
+- HUD: decide overheat policy (hide vs. expanded), reflect in heat UI
+  - [x] Implemented: expanded meter in vertical; policy toggle in settings and URL
+- Stage beats: add 1–2 more simple formations; add fairness guards
 
-3) Dev flags and overlays
-	- `mode`/`zoom`/`speed`/`skipIntro`/`patterns`; simple path/formation debug overlay
+1) Boss intro and outro cinematics
 
-4) Performance/QA quick pass
-	- Pooled VFX/projectiles hotspots; DPR/safe-area checks; mobile ergos
+- [x] Intro/outro zoom tweens (base)
+- [x] Bullet-clear on outro start; revert to ring
+- Boss entrance lock-in; reward burst polish
+
+1) Dev flags and overlays
+
+- `mode`/`zoom`/`speed`/`skipIntro`/`patterns`; simple path/formation debug overlay
+
+1) Performance/QA quick pass
+
+- Pooled VFX/projectiles hotspots; DPR/safe-area checks; mobile ergos
 
 After Vertical Stage ships, resume: Elite expansion, weapon slots (Shotgun), Artillery, Dash, and pattern library breadth.
-

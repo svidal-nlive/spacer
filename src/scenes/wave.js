@@ -38,6 +38,15 @@ export const waveScene = {
   stageBeat: 0,
   // cinematic zoom
   zoomTween: { t:0, dur:0, from:1, to:1 },
+  // stage intro input gate (disable controls, show "GO")
+  _gateActive: false,
+  _gateT: 0,
+  _gateDur: 0,
+  // simple muzzle flash for vertical shots
+  _muzzleT: 0,
+  _muzzleX: 0,
+  _muzzleY: 0,
+  _muzzleA: 0,
   enter(){
     this.enemySpawnT = 0; this.fireCooldown = 0; this.spawned = 0; game.lastReward = 0; game.earnedThisWave = 0; game.lastRewardKills = 0; game.lastRewardClear = 0;
     // set a per-wave quota and alive cap
@@ -57,8 +66,8 @@ export const waveScene = {
   // If boss wave, start with a short vertical stage section before the boss
   if(isBossWave()){
   triggerLetterboxIn(0.8); enableBossBarrier(); setArena('vertical'); setInputScheme('verticalFixed');
-  // intro zoom-out tween
-  this.zoomTween = { t:0, dur: 0.9, from: 1.0, to: 0.9 };
+  // intro zoom-out tween (target ~0.8 per spec)
+  this.zoomTween = { t:0, dur: 1.2, from: 1.0, to: 0.8 };
   // Pre-position player below barrier so camera shift is evident (consider letterbox offset)
   const dpr = window.devicePixelRatio || 1;
   const yScreen = getBossBarrierScreenY(); // CSS px
@@ -70,12 +79,15 @@ export const waveScene = {
   const startYcss = pb.y + pb.height - 60; // 60px above bottom of playable
   game.playerPos.x = 0;
   game.playerPos.y = (startYcss - (pb.y + pb.height/2)) * dpr;
-  // run a short stage before boss
+  // run a short stage before boss; gate inputs briefly and show GO sweep
   this.state = 'stage'; this.stateT = 0; this.stageBeat = 0;
+  this._gateDur = (game.devSkipIntro? 0.25 : 2.6); this._gateT = 0; this._gateActive = true;
   }
   },
   update(dt){
   this.stateT += dt;
+  // tick gate
+  if(this._gateActive){ this._gateT += dt; if(this._gateT >= this._gateDur){ this._gateActive = false; } }
   // tick arena mode (scroll, etc.)
   try{ getArena().update?.(dt); }catch{}
   // zoom tween update
@@ -109,6 +121,8 @@ export const waveScene = {
         let vy = (down?1:0) - (up?1:0);
         const len = Math.hypot(vx,vy)||1; return { vx: vx/len, vy: vy/len };
       })();
+      // input gating during cinematic: suppress movement
+      if(this._gateActive){ vx = 0; vy = 0; }
       if(game.arenaMode==='vertical'){
         // accel/drag
         const ax = vx*speed*2.4, ay = vy*speed*2.4;
@@ -192,7 +206,9 @@ export const waveScene = {
         }
       }
     }
-    if(!game.overheated && input.firing && this.fireCooldown===0){
+    // suppress firing while gated
+    const canFire = !this._gateActive;
+    if(!game.overheated && input.firing && this.fireCooldown===0 && canFire){
       const muzzle = 28;
   const isTD = (game.arenaMode==='topdown' || game.arenaMode==='vertical');
   const ox = isTD ? game.playerPos.x : 0;
@@ -204,6 +220,10 @@ export const waveScene = {
       for(let i=0;i<spreadN;i++){
         const a = aimAngle + (spreadN>1? (i-1)*spreadAngle : 0);
   spawnBullet(mx, my, a, {speed: game.bulletSpeed, dmg: game.dmg, ttl: 1.2});
+      }
+      // nozzle flash in vertical mode (cone/flare)
+      if(game.arenaMode==='vertical'){
+        this._muzzleX = mx; this._muzzleY = my; this._muzzleA = aimAngle; this._muzzleT = 0.12;
       }
       this.fireCooldown = (1/game.rof) / rapidMul;
     }
@@ -269,18 +289,22 @@ export const waveScene = {
     }
     else if(this.state==='stage'){
       // Three simple formation beats, then bossIntro
+      const fast = !!game.devPatternsFast;
+      const times = fast? [0.1,0.3,0.5,0.7,0.9,1.1] : [0.4,4.0,8.0,10.8,13.6,18.0];
+      const pat = (game.devPattern||'').toLowerCase();
+      const wants = (key)=> !pat || pat===key;
       // Beat 0: lane grunts
-      if(this.stageBeat===0 && this.stateT>=0.4){ spawnLaneGrunts(); this.stageBeat=1; }
+      if(this.stageBeat===0 && this.stateT>=times[0]){ if(wants('lanes')) spawnLaneGrunts(); this.stageBeat=1; this.stateT=0; }
       // Beat 1: wedge strikers
-      if(this.stageBeat===1 && this.stateT>=4.0){ spawnWedgeStrikers(); this.stageBeat=2; }
-  // Beat 2: turrets (tanks) drop-in
-  if(this.stageBeat===2 && this.stateT>=8.0){ spawnTurretPods(); this.stageBeat=3; }
-  // Beat 3: zig-zag strafers
-  if(this.stageBeat===3 && this.stateT>=10.8){ spawnZigZagStrafers(); this.stageBeat=4; }
-  // Beat 4: spiral swirl drop
-  if(this.stageBeat===4 && this.stateT>=13.6){ spawnSpiralSwirl(); this.stageBeat=5; }
-  // transition when field mostly clear after last beat
-  if(this.stageBeat>=5 && this.stateT>=18.0){
+      if(this.stageBeat===1 && this.stateT>=times[1]){ if(wants('wedge')) spawnWedgeStrikers(); this.stageBeat=2; this.stateT=0; }
+      // Beat 2: turrets (tanks) drop-in
+      if(this.stageBeat===2 && this.stateT>=times[2]){ if(wants('tanks')) spawnTurretPods(); this.stageBeat=3; this.stateT=0; }
+      // Beat 3: zig-zag strafers
+      if(this.stageBeat===3 && this.stateT>=times[3]){ if(wants('zig')) spawnZigZagStrafers(); this.stageBeat=4; this.stateT=0; }
+      // Beat 4: spiral swirl drop
+      if(this.stageBeat===4 && this.stateT>=times[4]){ if(wants('swirl')) spawnSpiralSwirl(); this.stageBeat=5; this.stateT=0; }
+      // transition when field mostly clear after last beat
+      if(this.stageBeat>=5 && this.stateT>=times[5]){
         // wait until few alive remain
         let alive=0; forEachEnemy(e=>{ if(e.active) alive++; });
         if(alive<=2){ this.state='bossIntro'; this.stateT=0; }
@@ -391,6 +415,26 @@ export const waveScene = {
   // barrel
   const aim = (game.arenaMode==='vertical') ? activeScheme.getAimAngle() : input.aimAngle;
   ctx.save(); ctx.rotate(aim); ctx.fillStyle = game.overheated? '#ff4d6d':'#25d0ff'; ctx.fillRect(0,-4,32,8); ctx.restore();
+  // draw muzzle flash cone/flare in vertical mode
+  if(game.arenaMode==='vertical' && this._muzzleT>0){
+    this._muzzleT = Math.max(0, this._muzzleT - 1/60);
+    ctx.save();
+    ctx.translate(this._muzzleX - px, this._muzzleY - py);
+    ctx.rotate(this._muzzleA);
+    const t = Math.min(1, this._muzzleT/0.12);
+    const prevComp = ctx.globalCompositeOperation; ctx.globalCompositeOperation = 'lighter';
+    // core flare
+    ctx.globalAlpha = 0.6 * t; ctx.fillStyle = '#fff1b8';
+    ctx.beginPath(); ctx.arc(6, 0, 3 + 3*t, 0, Math.PI*2); ctx.fill();
+    // cone
+    ctx.globalAlpha = 0.5 * t; ctx.fillStyle = '#ffd166';
+    const w1 = 3 + 4*t; const w2 = 10 + 14*t; const len = 22 + 24*t;
+    ctx.beginPath(); ctx.moveTo(0, -w1); ctx.lineTo(len, -w2); ctx.lineTo(len, w2); ctx.lineTo(0, w1); ctx.closePath(); ctx.fill();
+    // hot inner beam
+    ctx.globalAlpha = 0.35 * t; ctx.fillStyle = '#fffbe6';
+    ctx.fillRect(0, -1.5, len*0.9, 3);
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = prevComp; ctx.restore();
+  }
   ctx.restore();
   // world entities
   drawBullets(ctx);
@@ -424,6 +468,17 @@ export const waveScene = {
   drawTopBar({score: game.score, wave: `${game.wave}  ❤${game.lives}  ⓒ${game.credits} (+${game.earnedThisWave})`, heat: game.heat, heatMax: game.heatMax, muted: false, twoXActive: game.powerups.twoXT>0, twoXAlpha});
   drawAbilityUI();
   if(bossActive()) drawBossBar(boss.name, boss.hp, boss.maxHp);
+  // GO sweep overlay during gated intro
+  if(this._gateActive && game.arenaMode==='vertical' && this.state==='stage'){
+    const k = Math.min(1, this._gateT / Math.max(0.001, this._gateDur));
+    const dpr2 = window.devicePixelRatio||1; ctx.save(); ctx.resetTransform(); ctx.scale(dpr2,dpr2);
+    const wCSS2 = canvas.width/dpr2, hCSS2 = canvas.height/dpr2;
+    ctx.globalAlpha = 0.7 * Math.sin(k*Math.PI);
+    ctx.fillStyle = '#b7f3ff'; ctx.font = 'bold 36px system-ui,sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    const y = hCSS2*0.65 - (k*20);
+    ctx.fillText('GO', wCSS2/2, y);
+    ctx.globalAlpha = 1; ctx.restore();
+  }
   drawScreenEdgeFlash();
   }
 };
@@ -497,6 +552,8 @@ function bulletClear(){
   try{ forEachBullet(b=> deactivateBullet(b)); }catch{}
 }
 function usePulsar(){ if(game.abilQ_cd>0) return; // radial shockwave: damage or pushback
+  // gate abilities during intro cinematic
+  if(waveScene._gateActive) return;
   // tuned: larger radius, a bit more push
   const radius = 200;
   const damage = Math.max(1, Math.ceil(game.dmg));
@@ -510,6 +567,7 @@ function usePulsar(){ if(game.abilQ_cd>0) return; // radial shockwave: damage or
   game.abilQ_cd = game.abilQ_max;
 }
 function useEmp(){ if(game.abilE_cd>0) return; // forward cone stun/damage
+  if(waveScene._gateActive) return;
   const p = getPlayerWorldPos();
   const ang = input.aimAngle; const arc = Math.PI/2.6; const range = 260; // slightly wider and longer
   const damage = Math.max(1, Math.ceil(game.dmg));

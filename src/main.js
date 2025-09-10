@@ -13,6 +13,9 @@ import { shopScene } from './scenes/shop.js';
 import { uiButtons } from './ui/buttons.js';
 import { setScene as goScene } from './engine/sceneManager.js';
 
+// Mark app boot state for automation
+try { window.spacerReady = false; document.body.setAttribute('data-spacer-ready','0'); } catch {}
+
 // simple UI bar clicks
 // load persisted UI prefs
 game.showAbilityLabels = load('showAbilityLabels', true);
@@ -22,6 +25,8 @@ game.laserEnabled = load('laserEnabled', game.laserEnabled);
 game.autoFire = load('autoFire', game.autoFire);
 game.autoRange = load('autoRange', game.autoRange);
 game.showAutoGrid = load('showAutoGrid', game.showAutoGrid);
+// vertical heat policy persistence
+game.verticalHeatPolicy = load('verticalHeatPolicy', game.verticalHeatPolicy);
 // URL toggles: ?auto=1 to enable auto-fire; ?devShop=1 to open shop immediately
 try{
   const params = new URLSearchParams(window.location.search);
@@ -48,6 +53,14 @@ try{
   // Cinematic helpers
   if(params.get('skipIntro')==='1') { game.devSkipIntro = true; }
   const zoom = parseFloat(params.get('zoom')||''); if(!Number.isNaN(zoom)){ game.devZoom = zoom; }
+  // Vertical heat policy: ?heat=expanded|disabled (alias: heatPolicy)
+  const heatParam = (params.get('heat') || params.get('heatPolicy'));
+  if(heatParam && (heatParam==='expanded' || heatParam==='disabled')){
+    game.verticalHeatPolicy = heatParam; save('verticalHeatPolicy', heatParam);
+  }
+  // Patterns/dev flags: ?patterns=1 to speed stage beats; ?pattern=lanes|wedge|tanks|swirl to force a pattern
+  if(params.get('patterns')==='1'){ game.devPatternsFast = true; }
+  const pat = params.get('pattern'); if(pat){ game.devPattern = pat; }
 }catch{ /* no-op */ }
 
 // Enforce ability bars in top gutter by default, overriding any saved preference
@@ -131,8 +144,7 @@ function showPlayOverlay(){
   const startHold = ()=> inputSecondaryHold(true);
   const stopHold = ()=> inputSecondaryHold(false);
   const buttons = [
-    { label:'Q', title:'Pulsar (Q)', onClick: triggerQ, testid:'btn-q' },
-    { label:'E', title:'EMP (E)', onClick: triggerE, testid:'btn-e' },
+    // Ability bars are drawn in HUD; omit redundant Q/E buttons in play overlay
     { label: game.laserEnabled? 'Lsr':'Lsr', title:'Toggle Laser (P)', onClick: toggleLaser, testid:'btn-laser' },
   { label: (isMuted()? '🔇' : '🔊'), title:'Audio (M)', onClick: triggerMute, testid:'btn-audio' },
     { label:'AUTO', title:'Dev Auto-Fire Toggle', onClick: toggleAuto, variant:'pill', testid:'btn-auto' },
@@ -164,11 +176,17 @@ function showSettingsOverlay(){
   const incRange = ()=>{ game.autoRange = Math.min(600, Math.round(game.autoRange + 20)); save('autoRange', game.autoRange); showSettingsOverlay(); };
   const toggleGrid = ()=>{ game.showAutoGrid = !game.showAutoGrid; save('showAutoGrid', game.showAutoGrid); showSettingsOverlay(); };
   const devMenu = ()=>{ showDevOverlay(); };
+  const toggleHeat = ()=>{
+    const next = (game.verticalHeatPolicy==='expanded'? 'disabled' : 'expanded');
+    game.verticalHeatPolicy = next; save('verticalHeatPolicy', next); showSettingsOverlay();
+  };
   uiButtons.show([
   { label:'—', title:'Range -', onClick: decRange, testid:'btn-range-dec' },
   { label:`${game.autoRange}px`, title:'AUTO Range', onClick: ()=>{} , variant:'pill', testid:'lbl-range' },
   { label:'+', title:'Range +', onClick: incRange, testid:'btn-range-inc' },
   { label: game.showAutoGrid? 'Grid✓':'Grid', title:'Toggle AUTO Grid', onClick: toggleGrid, variant:'pill', testid:'btn-grid' },
+  // Vertical-stage heat policy toggle (always visible; only affects vertical mode)
+  { label: (game.verticalHeatPolicy==='disabled'? 'Heat: Off' : 'Heat: Wide'), title:'Vertical Heat Policy', onClick: toggleHeat, variant:'pill', testid:'btn-heat-policy' },
   ...(game.devMode? [{ label:'Dev', title:'Developer Tools', onClick: devMenu, variant:'pill', testid:'btn-dev' }]: []),
   { label:'Close', title:'Close Settings', onClick: close, variant:'pill', testid:'btn-settings-close' },
   ], { position:'bottom-right', caption:'Settings — AUTO' });
@@ -184,6 +202,7 @@ function showDevOverlay(){
   const plus1 = ()=> setWave(game.wave + 1);
   const plus10 = ()=> setWave(game.wave + 10);
   const togglePause = ()=>{ game.devPause = !game.devPause; };
+  const togglePatterns = ()=>{ game.devPatternsFast = !game.devPatternsFast; };
   uiButtons.show([
   { label:'-10', title:'Wave -10', onClick: minus10, testid:'btn-wave--10' },
   { label:'-1', title:'Wave -1', onClick: minus1, testid:'btn-wave--1' },
@@ -192,6 +211,7 @@ function showDevOverlay(){
   { label:'+10', title:'Wave +10', onClick: plus10, testid:'btn-wave-+10' },
   { label:'Boss', title:'Next Boss Wave', onClick: ()=>{ const w = game.wave; const nextBoss = (Math.floor((w-1)/5)+1)*5; setWave(nextBoss); }, variant:'pill', testid:'btn-next-boss' },
   { label: game.devPause? 'Resume':'Pause', title:'Dev Pause (no overlay)', onClick: togglePause, variant:'pill', testid:'btn-dev-pause' },
+  { label: game.devPatternsFast? 'Patterns✓':'Patterns', title:'Speed Stage Beats', onClick: togglePatterns, variant:'pill', testid:'btn-dev-patterns' },
   { label:'Back', title:'Back', onClick: back, variant:'pill', testid:'btn-back' },
   ], { position:'bottom-right', caption:'Dev — Wave Jump' });
 }
@@ -234,3 +254,5 @@ if(getScene()!==shopScene) setScene(waveScene);
 start(update, render);
 // Initial overlay
 window.dispatchEvent(new CustomEvent('spacer:show-ui', { detail:{ type: getScene()===shopScene? 'shop':'play' } }));
+// Signal readiness for external automation (e.g., Playwright)
+try { window.spacerReady = true; document.body.setAttribute('data-spacer-ready','1'); window.dispatchEvent(new CustomEvent('spacer:ready')); } catch {}

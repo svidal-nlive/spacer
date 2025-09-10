@@ -33,6 +33,11 @@ export const game = {
   // dev flags for vertical stage
   devSkipIntro: false,
   devZoom: null,
+  // dev patterns flags: speed up stage beats and/or select specific pattern for validation
+  devPatternsFast: false,
+  devPattern: null, // e.g., 'lanes' | 'wedge' | 'tanks' | 'swirl'
+  // vertical-stage overheat policy: 'expanded' | 'disabled'
+  verticalHeatPolicy: 'expanded',
   // transient UI timers
   readyFlashQ: 0, readyFlashE: 0,
   screenFlash: 0,

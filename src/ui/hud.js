@@ -78,13 +78,26 @@ export function drawTopBar({score, wave, heat, heatMax, muted, twoXActive, twoXA
       ctx.restore();
     }
   }
-  // heat bar (vertical mode may hide or reflect expanded policy later; for now always show)
-  const x = (w/dpr)-meterW-12, y = 12;
-  ctx.fillStyle = '#142231'; ctx.fillRect(x,y,meterW,meterH);
-  const pct = Math.min(1, heat/heatMax);
-  ctx.fillStyle = pct<0.8? '#25d0ff' : pct<1? '#ffb63b':'#ff4d6d';
-  ctx.fillRect(x,y,meterW*pct,meterH);
-  ctx.strokeStyle = '#1e2f45'; ctx.strokeRect(x+0.5,y+0.5,meterW-1,meterH-1);
+  // Heat bar: reflect vertical-stage policy (expanded | disabled)
+  const isVertical = (game.arenaMode==='vertical');
+  const policy = (isVertical ? (game.verticalHeatPolicy || 'expanded') : 'normal');
+  if(!(isVertical && policy==='disabled')){
+    let x = (w/dpr)-meterW-12, y = 12, mh = meterH, mw = meterW;
+    if(isVertical && policy==='expanded'){ mw = 200; mh = 10; x = (w/dpr) - mw - 12; y = 10; }
+    ctx.fillStyle = '#142231'; ctx.fillRect(x,y,mw,mh);
+    const pct = Math.min(1, heat/heatMax);
+    ctx.fillStyle = pct<0.8? '#25d0ff' : pct<1? '#ffb63b':'#ff4d6d';
+    ctx.fillRect(x,y,mw*pct,mh);
+    ctx.strokeStyle = '#1e2f45'; ctx.strokeRect(x+0.5,y+0.5,mw-1,mh-1);
+    if(isVertical && policy==='expanded'){
+      // small label and tick marks for expanded mode
+      ctx.fillStyle = '#7aa8c7'; ctx.font = `${Math.max(9, hudFontPx-3)}px system-ui, sans-serif`;
+      ctx.fillText('HEAT', x-36, y+mh-1);
+      ctx.globalAlpha = 0.22; ctx.fillStyle = '#25d0ff'; const tY = y+mh+2;
+      for(let i=1;i<5;i++){ const tx = x + (mw*i/5); ctx.fillRect(tx, tY, 1, 3); }
+      ctx.globalAlpha = 1;
+    }
+  }
   // remove text label near the heat meter to avoid confusion and clutter
   // (heat meter alone communicates overheat state clearly)
   // draw bottom UI gutter after HUD so it overlays the playfield
