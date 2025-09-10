@@ -1,5 +1,7 @@
 // core/uiBounds.js - compute UI gutters and playable screen bounds (in CSS px)
 import { canvas } from './canvas.js';
+// Note: existing gutters are tuned for HUD drawing. Additional helpers below
+// provide viewport/title-safe/action-safe bounds for the dev layout overlay.
 
 // Detect if the on-screen button overlay is anchored near a screen edge
 function measureOverlayHeightNear(edge){
@@ -48,4 +50,48 @@ export function getPlayableScreenBounds(){
   const g = getUiGuttersPx();
   const x = 0; const y = g.top; const width = w; const height = Math.max(0, h - g.top - g.bottom);
   return { x, y, width, height };
+}
+
+// --- Layout overlay helpers (CSS px) ---
+export function getViewportRectCSS(){
+  const dpr = window.devicePixelRatio || 1;
+  return { x: 0, y: 0, width: canvas.width/dpr, height: canvas.height/dpr };
+}
+
+function getLetterboxHeightsCSS(){
+  try{
+    const dpr = window.devicePixelRatio || 1;
+    const hCSS = canvas.height / dpr;
+    const k = (window?.spacerLetterboxK ?? 0);
+    const bar = Math.round(hCSS * 0.14 * Math.max(0, Math.min(1, k)));
+    return { top: bar, bottom: bar };
+  }catch{ return { top:0, bottom:0 }; }
+}
+
+export function getTitleSafeRectCSS(){
+  const vp = getViewportRectCSS();
+  const g = getUiGuttersPx();
+  const lb = getLetterboxHeightsCSS();
+  // side padding ~4% of width, min 12, max 32
+  const sidePad = Math.max(12, Math.min(32, Math.round(vp.width * 0.04)));
+  const topPad = (g.top || 0) + (lb.top || 0);
+  const botPad = (g.bottom || 0) + (lb.bottom || 0);
+  return {
+    x: vp.x + sidePad,
+    y: vp.y + Math.max(12, topPad + 8),
+    width: Math.max(0, vp.width - sidePad*2),
+    height: Math.max(0, vp.height - Math.max(12, topPad + 8) - Math.max(12, botPad + 8)),
+  };
+}
+
+export function getActionSafeRectCSS(){
+  const ts = getTitleSafeRectCSS();
+  // action area slightly smaller than HUD/title-safe; 24px or 6% inset (whichever larger)
+  const inset = Math.max(24, Math.round(Math.min(ts.width, ts.height) * 0.06));
+  return {
+    x: ts.x + inset,
+    y: ts.y + inset,
+    width: Math.max(0, ts.width - inset*2),
+    height: Math.max(0, ts.height - inset*2),
+  };
 }

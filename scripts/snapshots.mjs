@@ -2,7 +2,7 @@
 import { chromium, devices } from '@playwright/test';
 
 // Prefer an explicit wave jump so we don't depend on Dev overlay controls being present
-const TARGET = process.env.SPACER_URL || 'https://spacer.vectorhost.net/?auto=1&dev=1&pause=1&wave=5&skipIntro=1&patterns=1';
+const TARGET = process.env.SPACER_URL || 'https://spacer.vectorhost.net/?auto=1&dev=1&pause=1&wave=5&skipIntro=1&patterns=1&layout=1';
 const OUTDIR = process.env.OUT || 'playwright_screenshots';
 
 const profiles = [

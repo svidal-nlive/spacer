@@ -13,7 +13,7 @@ import { handleBulletEnemyShotCollisions } from '../systems/bullet_vs_enemyShot.
 import { updateLasers, drawLasers, handleLaserEnemyShotCollisions } from '../entities/laser.js';
 import { updateLaserAI, resetLaserAI } from '../systems/laser_ai.js';
 import { drawTopBar, drawHeatRing, drawBossBar } from '../ui/hud.js';
-import { getUiGuttersPx } from '../core/uiBounds.js';
+import { getUiGuttersPx, getViewportRectCSS, getTitleSafeRectCSS, getActionSafeRectCSS } from '../core/uiBounds.js';
 import { getPlayableScreenBounds } from '../core/uiBounds.js';
 import { setScene } from '../engine/sceneManager.js';
 import { shopScene } from './shop.js';
@@ -483,6 +483,27 @@ export const waveScene = {
   // VFX + enemy shots
   drawEffects(); drawEnemyShots(); drawLasers();
   ctx.restore();
+  // Dev: layered layout overlay for screenshots (URL ?layout=1)
+  try{
+    const params = new URLSearchParams(window.location.search);
+    if(params.get('layout')==='1'){
+      const dprO = window.devicePixelRatio||1; ctx.save(); ctx.resetTransform(); ctx.scale(dprO,dprO);
+      const vp = getViewportRectCSS();
+      const ts = getTitleSafeRectCSS();
+      const as = getActionSafeRectCSS();
+      // Magenta – full device/frame bounds
+      ctx.strokeStyle = '#ff00cc'; ctx.lineWidth = 8; ctx.strokeRect(0,0, canvas.width/dprO, canvas.height/dprO);
+      // Cyan – Browser viewport
+      ctx.strokeStyle = '#1e90ff'; ctx.lineWidth = 6; ctx.strokeRect(vp.x+3, vp.y+3, vp.width-6, vp.height-6);
+      // Green – HUD/title-safe area
+      ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 6; ctx.strokeRect(ts.x, ts.y, ts.width, ts.height);
+      // Yellow – Action-safe area
+      ctx.strokeStyle = '#eab308'; ctx.lineWidth = 6; ctx.strokeRect(as.x, as.y, as.width, as.height);
+      // Red – Bleed/gutter zone (between title-safe and action-safe): draw as inner border inside title-safe
+      ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 10; ctx.strokeRect(as.x-5, as.y-5, as.width+10, as.height+10);
+      ctx.restore();
+    }
+  }catch{}
   // Cinematic intro: light chassis reveal under letterbox with clamp-on SFX
   if(game.arenaMode==='vertical' && this.state==='stage' && this._gateActive){
     const dprC = window.devicePixelRatio||1; ctx.save(); ctx.resetTransform(); ctx.scale(dprC,dprC);
