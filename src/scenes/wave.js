@@ -42,6 +42,9 @@ export const waveScene = {
   _gateActive: false,
   _gateT: 0,
   _gateDur: 0,
+  // cinematic intro: light chassis reveal during letterbox-in
+  _introChassisT: 0,
+  _introClampDid: false,
   // simple muzzle flash for vertical shots
   _muzzleT: 0,
   _muzzleX: 0,
@@ -68,6 +71,8 @@ export const waveScene = {
   triggerLetterboxIn(0.8); enableBossBarrier(); setArena('vertical'); setInputScheme('verticalFixed');
   // intro zoom-out tween (target ~0.8 per spec)
   this.zoomTween = { t:0, dur: 1.2, from: 1.0, to: 0.8 };
+  // reset intro reveal timers
+  this._introChassisT = 0; this._introClampDid = false;
   // Pre-position player below barrier so camera shift is evident (consider letterbox offset)
   const dpr = window.devicePixelRatio || 1;
   const yScreen = getBossBarrierScreenY(); // CSS px
@@ -92,6 +97,8 @@ export const waveScene = {
   try{ getArena().update?.(dt); }catch{}
   // zoom tween update
   if(this.zoomTween.dur>0 && this.zoomTween.t < this.zoomTween.dur){ this.zoomTween.t = Math.min(this.zoomTween.dur, this.zoomTween.t + dt); }
+  // letterbox intro chassis reveal timer
+  if(this.state==='stage' && game.arenaMode==='vertical' && this._gateActive){ this._introChassisT += dt; }
   // gamepad ability triggers
   if(input.gpQTriggered) usePulsar();
   if(input.gpETriggered) useEmp();
@@ -357,7 +364,9 @@ export const waveScene = {
         try{ const a = getArena(); if(a?.name==='vertical' && this._outroSpeedFrom!=null){ a.speed = this._outroSpeedFrom; } }catch{}
         disableBossBarrier(); setArena('ring'); setInputScheme('twinStick');
       }
-      if(this.stateT>=0.9){ this.state='end'; this.stateT=0; concludeWave(); return; }
+  // Extend outro with a brief slow-down and fade before shop transition for clarity
+  const outroTotal = 1.2; // extend to 1.2s
+  if(this.stateT>=outroTotal){ this.state='end'; this.stateT=0; concludeWave(); return; }
     }
 
   updateBullets(dt); updateEnemies(dt); updateEnemyShots(dt); handleBulletEnemyCollisions(); handleBulletEnemyShotCollisions();
@@ -474,6 +483,24 @@ export const waveScene = {
   // VFX + enemy shots
   drawEffects(); drawEnemyShots(); drawLasers();
   ctx.restore();
+  // Cinematic intro: light chassis reveal under letterbox with clamp-on SFX
+  if(game.arenaMode==='vertical' && this.state==='stage' && this._gateActive){
+    const dprC = window.devicePixelRatio||1; ctx.save(); ctx.resetTransform(); ctx.scale(dprC,dprC);
+    const wCSS2 = canvas.width/dprC, hCSS2 = canvas.height/dprC;
+    // faint ship silhouette near center-bottom
+    const k = Math.min(1, this._introChassisT/0.8);
+    const alpha = 0.12 + 0.25 * k; // fade in
+    const y = hCSS2*0.62 + (1-k)*30; // ease up slightly
+    ctx.globalAlpha = alpha; ctx.fillStyle = '#9fdcff';
+    // simple chassis: diamond + small wings
+    ctx.beginPath();
+    const cx2 = wCSS2/2;
+    ctx.moveTo(cx2, y-12); ctx.lineTo(cx2+10, y); ctx.lineTo(cx2, y+12); ctx.lineTo(cx2-10, y); ctx.closePath(); ctx.fill();
+    ctx.globalAlpha = alpha*0.7; ctx.fillRect(cx2-16, y-3, 6, 6); ctx.fillRect(cx2+10, y-3, 6, 6);
+    ctx.globalAlpha = 1; ctx.restore();
+    // one-time clamp-on SFX ping mid-letterbox
+    if(!this._introClampDid && this._introChassisT>0.4){ this._introClampDid = true; if(!isMuted()) beep({freq:300, freqEnd:220, type:'square', duration:0.06, gain:0.03, attack:0.004, release:0.05}); }
+  }
   // Heat ring at the playable center respecting render offset
   // Heat ring follows player in topdown, remains center in ring mode
   const isTD = (game.arenaMode==='topdown' || game.arenaMode==='vertical');
@@ -487,6 +514,36 @@ export const waveScene = {
   drawTopBar({score: game.score, wave: `${game.wave}  ❤${game.lives}  ⓒ${game.credits} (+${game.earnedThisWave})`, heat: game.heat, heatMax: game.heatMax, muted: false, twoXActive: game.powerups.twoXT>0, twoXAlpha});
   drawAbilityUI();
   if(bossActive()) drawBossBar(boss.name, boss.hp, boss.maxHp);
+  // Dev formation overlay: spawn boxes and safe lanes (screen space)
+  if(game.devFormationOverlay && game.arenaMode==='vertical'){
+    const dprO = window.devicePixelRatio||1; ctx.save(); ctx.resetTransform(); ctx.scale(dprO,dprO);
+    const pbCSS = getPlayableScreenBounds();
+    ctx.globalAlpha = 0.5; ctx.strokeStyle = '#2b6cb0'; ctx.setLineDash([6,4]);
+    // Safe lanes: 5 equidistant vertical lanes within playable area
+    const lanes = 5; const laneW = pbCSS.width/lanes;
+    for(let i=0;i<=lanes;i++){
+      const x = pbCSS.x + i*laneW; ctx.beginPath(); ctx.moveTo(x, pbCSS.y); ctx.lineTo(x, pbCSS.y + pbCSS.height); ctx.stroke();
+    }
+    // Spawn boxes hinting beats used earlier (top band)
+    const boxH = 80; const pad = 10;
+    // lanes beat
+    ctx.strokeStyle='#3b82f6'; ctx.setLineDash([8,6]);
+    ctx.strokeRect(pbCSS.x+pad, pbCSS.y+pad, pbCSS.width-pad*2, boxH);
+    // wedge beat narrower
+    ctx.strokeStyle='#22c55e'; ctx.setLineDash([6,4]);
+    ctx.strokeRect(pbCSS.x+pbCSS.width*0.15, pbCSS.y+pad+boxH+10, pbCSS.width*0.7, boxH*0.7);
+    // tanks line
+    ctx.strokeStyle='#f59e0b'; ctx.setLineDash([10,6]);
+    ctx.strokeRect(pbCSS.x+pad, pbCSS.y+pad+boxH*2+20, pbCSS.width-pad*2, boxH*0.6);
+    // zig area
+    ctx.strokeStyle='#ef4444'; ctx.setLineDash([4,3]);
+    ctx.strokeRect(pbCSS.x+pbCSS.width*0.1, pbCSS.y+pad+boxH*2.8+26, pbCSS.width*0.8, boxH*0.8);
+    // swirl ring hint
+    ctx.strokeStyle='#a78bfa'; ctx.setLineDash([2,4]);
+    const cx = pbCSS.x + pbCSS.width/2, cy = pbCSS.y + pad + boxH*4.0; const r = Math.min(pbCSS.width, pbCSS.height)*0.25;
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.stroke();
+    ctx.setLineDash([]); ctx.globalAlpha = 1; ctx.restore();
+  }
   // GO sweep overlay during gated intro
   if(this._gateActive && game.arenaMode==='vertical' && this.state==='stage'){
     const k = Math.min(1, this._gateT / Math.max(0.001, this._gateDur));
@@ -497,6 +554,14 @@ export const waveScene = {
     const y = hCSS2*0.65 - (k*20);
     ctx.fillText('GO', wCSS2/2, y);
     ctx.globalAlpha = 1; ctx.restore();
+  }
+  // End-of-outro screen fade to black for clarity
+  if(this.state==='bossOutro'){
+    const t = this.stateT; const start = 0.9, end = 1.2; if(t>=start){
+      const dprF = window.devicePixelRatio||1; const k = Math.min(1, (t-start)/Math.max(0.0001, end-start));
+      ctx.save(); ctx.resetTransform(); ctx.scale(dprF,dprF); ctx.globalAlpha = 0.6*k; ctx.fillStyle = '#000';
+      ctx.fillRect(0,0, canvas.width/dprF, canvas.height/dprF); ctx.restore();
+    }
   }
   drawScreenEdgeFlash();
   }

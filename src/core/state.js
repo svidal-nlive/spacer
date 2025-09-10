@@ -36,6 +36,8 @@ export const game = {
   // dev patterns flags: speed up stage beats and/or select specific pattern for validation
   devPatternsFast: false,
   devPattern: null, // e.g., 'lanes' | 'wedge' | 'tanks' | 'swirl'
+  // dev formation overlay (draw spawn boxes & safe lanes)
+  devFormationOverlay: false,
   // vertical-stage overheat policy: 'expanded' | 'disabled'
   verticalHeatPolicy: 'expanded',
   // transient UI timers

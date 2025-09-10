@@ -61,6 +61,8 @@ try{
   // Patterns/dev flags: ?patterns=1 to speed stage beats; ?pattern=lanes|wedge|tanks|swirl to force a pattern
   if(params.get('patterns')==='1'){ game.devPatternsFast = true; }
   const pat = params.get('pattern'); if(pat){ game.devPattern = pat; }
+  // Formation overlay: ?form=1 to show spawn boxes & lanes
+  if(params.get('form')==='1'){ game.devFormationOverlay = true; }
 }catch{ /* no-op */ }
 
 // Enforce ability bars in top gutter by default, overriding any saved preference
@@ -203,6 +205,7 @@ function showDevOverlay(){
   const plus10 = ()=> setWave(game.wave + 10);
   const togglePause = ()=>{ game.devPause = !game.devPause; };
   const togglePatterns = ()=>{ game.devPatternsFast = !game.devPatternsFast; };
+  const toggleForm = ()=>{ game.devFormationOverlay = !game.devFormationOverlay; };
   uiButtons.show([
   { label:'-10', title:'Wave -10', onClick: minus10, testid:'btn-wave--10' },
   { label:'-1', title:'Wave -1', onClick: minus1, testid:'btn-wave--1' },
@@ -212,6 +215,7 @@ function showDevOverlay(){
   { label:'Boss', title:'Next Boss Wave', onClick: ()=>{ const w = game.wave; const nextBoss = (Math.floor((w-1)/5)+1)*5; setWave(nextBoss); }, variant:'pill', testid:'btn-next-boss' },
   { label: game.devPause? 'Resume':'Pause', title:'Dev Pause (no overlay)', onClick: togglePause, variant:'pill', testid:'btn-dev-pause' },
   { label: game.devPatternsFast? 'Patterns✓':'Patterns', title:'Speed Stage Beats', onClick: togglePatterns, variant:'pill', testid:'btn-dev-patterns' },
+  { label: game.devFormationOverlay? 'Form✓':'Form', title:'Show Formation Overlay', onClick: toggleForm, variant:'pill', testid:'btn-dev-form' },
   { label:'Back', title:'Back', onClick: back, variant:'pill', testid:'btn-back' },
   ], { position:'bottom-right', caption:'Dev — Wave Jump' });
 }
