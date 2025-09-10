@@ -19,20 +19,24 @@ Observed OK
 - Vertical mode engages on wave 5 with parallax starfield and upward scroll.
 - Letterbox bars and boss barrier line appear; boss HP bar positions below the letterbox/top HUD.
 - Player movement uses keys and right-drag/touch nudge; fixed-forward firing works in vertical mode.
-- Heat tuned in vertical mode (slower heat gain, faster cooldown).
-- Stage timeline has simple beats (lanes → wedge → turret pods → zig-zag → swirl), then boss.
+- Heat tuned in vertical mode (slower heat gain, faster cooldown); heat meter policy supported.
+- Stage timeline has simple beats (lanes → wedge → zig-zag → swirl), then boss; dev flags allow forced pattern and fast beats.
 - Boss fight active with telegraph sweep, summons, and HP bar; outro clears bullets and reverts to ring mode.
 
 Deviations / Omissions to address (updated after quick-pass)
 
 - Cinematic intro polish partially implemented: basic “GO” sweep + explicit input gating added; camera zoom now ~0.80 (within spec). Missing: ship-chassis reveal + clamp-on SFX, richer sweep visuals.
-- Overheat UI policy surfaced: HUD now respects verticalStage policy (expanded vs disabled). Missing: a toggle surface in settings or dev flags.
-- Overheat UI policy surfaced: HUD now respects verticalStage policy (expanded vs disabled). Added settings toggle and URL param (?heat=expanded|disabled).
-- Ability bars as “bars” in top-right not implemented; current on-canvas buttons exist. Subtle “ready” pulse TBD.
+- Overheat UI policy surfaced: HUD respects vertical-stage policy (expanded vs disabled). Settings toggle present and URL param supported (?heat=expanded|disabled).
+- Ability bars are rendered as HUD bars in the top-right; subtle “ready” pulse polish is still TBD.
 - Formation breadth: carriers+drones, mine lines, and optional miniboss pre-boss not present yet.
 - Boss entrance lock-in theatrics not fully realized (screen clear cue, additional zoom tweak before lock, subtle pause beat).
-- Outro polish: reward auto-collect sweep, scroll slow-down, and docking cinematic are minimal/absent.
-- Minor: muzzle/nozzle flash added for vertical mode (basic rectangle flash). Could use sprite/pulse polish later.
+- Outro polish: reward auto-collect sweep, scroll slow-down, and docking cinematic remain minimal/absent.
+- Muzzle/nozzle flash upgraded to cone/flare with additive blend; further tuning possible but no longer a basic rectangle.
+
+Automation & tooling
+
+- Screenshots pipeline now waits for app readiness (window.spacerReady/body[data-spacer-ready="1"]).
+- Local override exposes container on [http://localhost:8085](http://localhost:8085) for reliable Playwright runs.
 
 Action items added below in relevant sections.
 
@@ -46,41 +50,42 @@ Action items added below in relevant sections.
 
 - [x] Arena mode: `vertical` scaffold (mode switch, camera hook, basic scroll)
   - [x] Parallax backdrop pass 1 (starfield)
-  - [ ] Stage lifecycle (pause/resume) and clean revert to ring with cinematic
-  - [ ] Camera: zoom-out to ~0.8 during intro, subtle vertical bob; respect safe-area gutters
-  - [ ] Playable bounds: spawn culling and gutter avoidance
+  - [x] Clean revert to ring with outro bullet-clear
+  - [x] Camera: zoom-out to ~0.8 during intro; subtle vertical bob
+  - [ ] Respect safe-area gutters and full bounds polish
+  - [x] Playable bounds: prox-box no-spawn + min-TTI backoff
 - [ ] Cinematics (intro/outro)
   - [ ] Intro: letterbox in; turret slides down; ship chassis reveal + clamp-on SFX; zoom-out; “GO” sweep
-    - [ ] Gate input for first ~2.5s; enable on “GO” sweep end
-    - [ ] Tune zoom to 0.75–0.85 target (currently ~0.90)
-  - [ ] Outro: bullet-clear, reward auto-collect; zoom-in; ship docks; revert to ring mode
+    - [x] Gate input for first ~2.5s; enable on “GO” sweep end
+    - [x] Tune zoom to 0.75–0.85 target (~0.80)
+    - [x] Basic “GO” sweep implemented
+  - [ ] Outro: reward auto-collect; zoom-in; ship docks; revert to ring mode
+    - [x] Bullet-clear on outro start; revert to ring mode
     - [ ] Scroll slow-down and docking animation
   - [ ] Audio stingers + timing polish
 - [ ] Player Ship (controls + feel)
-  - [ ] Fixed-forward firing from ship nose (no cursor-aimed turret for this stage)
+  - [x] Fixed-forward firing from ship nose (vertical stage)
   - [x] Input scheme stubs
   - [ ] Inputs:
     - [ ] Mouse/touch: click/tap to fire; hold = continuous fire
     - [ ] Gamepad/keys: move ship (WASD/Arrows/Left stick)
-    - [ ] Right mouse held OR touch drag: move ship while held/dragging (stub present, needs nudge)
-  - [ ] Movement: accel/drag, clamp to bounds; magnetized pickups within small radius
-    - [x] Accel/drag and clamp
+    - [x] Right mouse held OR touch drag: move ship while held/dragging (basic nudge)
+  - [x] Movement: accel/drag and clamp; magnetized pickups toward player
   - [ ] Abilities tuning: Pulsar radius/push; EMP stun/interrupt; bullet-clear rules
-  - [ ] Overheat policy (stage-local):
-    - [ ] Decide: disable overheat entirely OR raise cap significantly (e.g., +200%) with faster cooldown
-  - [ ] Implement toggle + UI behavior (hide/resize heat meter when disabled or expanded)
-  - [ ] Nozzle muzzle flash/spark at barrel in vertical mode (visual feedback)
+  - [x] Overheat policy (stage-local): policy selectable (expanded|disabled); faster cooldown in vertical mode
+  - [x] Toggle + UI behavior implemented (heat meter hidden or expanded per policy)
+  - [x] Nozzle muzzle flash/spark at barrel in vertical mode (cone/flare additive)
 - [ ] Formation system & stage timeline
   - [ ] Timeline DSL for beats (time windows, formation type, params)
   - [ ] Formation primitives:
-    - [ ] Lanes (3–5 lanes; staggered; cadence fire)
-    - [ ] V/Wedge (corner entries, converge + aimed spreads)
-    - [ ] Zig-zag strafers (direction changes fire windows)
-    - [ ] Spirals/Swirls (orbit + slow drops; corkscrew variant later)
+    - [x] Lanes (3–5 lanes; staggered; cadence fire)
+    - [x] V/Wedge (corner entries, converge + aimed spreads)
+    - [x] Zig-zag strafers (direction changes fire windows)
+    - [x] Spirals/Swirls (orbit + slow drops)
     - [ ] Carriers + Drones (carrier sine path; drone releases)
     - [ ] Dive bombers (telegraph + curved dash)
-    - [ ] Turret pods (hold position 2–3s; barrage; withdraw)
-  - [x] Minimal stage beats wired for wave 5 (lanes, wedge, tanks)
+    - [ ] Turret pods (hold/withdraw cadence)
+  - [x] Minimal stage beats wired for wave 5 (lanes, wedge, zig, swirl)
   - [ ] Mine lines (horizontal/diagonal; proximity/warn ring)
   - [ ] Carriers + drones beat
   - [ ] Optional miniboss pre-boss beat
@@ -89,22 +94,24 @@ Action items added below in relevant sections.
 - [ ] Boss — The Overseer (vertical rework)
   - [ ] Entrance sequence + lock-in
   - [ ] Phase set (1–4) orchestrating formations → direct aggression
-  - [ ] Curtains/lasers with safe lanes; HP bar below HUD and below letterbox
+  - [x] HP bar below HUD and below letterbox (placement)
+  - [ ] Curtains/lasers with safe lanes
   - [ ] Defeat sequence: dual shockwaves, bullet-clear, reward burst
 - [ ] UI/HUD
   - [ ] Ability bars top-right; subtle ready pulses (no harsh flash)
-    - [ ] Convert current buttons to a proper bar-style HUD element for stage mode
-  - [ ] Boss bar alignment under letterbox; responsive at low DPR
-  - [ ] Controls overlay minimal; audio button clear state
-  - [ ] Heat meter behavior per overheat policy (hidden or expanded)
-    - [x] Temporary: gentler heat rate + faster cooldown in vertical mode
+    - [x] Bars rendered as HUD element in stage mode (top-right)
+    - [ ] Subtle “ready” pulse polish
+  - [x] Boss bar alignment under letterbox; responsive baseline
+  - [x] Controls overlay minimal; audio button shows mute state
+  - [x] Heat meter behavior per overheat policy (hidden or expanded)
+    - [x] Gentler heat rate + faster cooldown in vertical mode
 - [ ] Testing & Dev
-  - [ ] URL flags: `mode=vertical`, `wave=N`, `skipIntro=1`, `zoom`, `speed`, `patterns`
-    - Note: basic flags `arena` and `scheme` are wired; extend to planned names
+  - [x] URL flags: `mode|arena`, `wave`, `skipIntro`, `zoom`, `speed`, `patterns`, `pattern`, `heat`
+  - [x] Dev overlay: wave jump, pause toggle, fast patterns toggle
   - [ ] Dev overlays: path/formation debug, spawn boxes, safe lanes
   - [ ] Performance: pooled projectiles/VFX; draw batching; DPR QA
-  - [ ] Fairness: prox-box no-spawn; minimum time-to-impact checks
-  - [ ] Mobile/touch ergonomics + safe-area QA
+  - [x] Fairness: prox-box no-spawn; minimum time-to-impact checks
+  - [~] Mobile/touch ergonomics + safe-area QA (overlay sizing/safe-area guards improved)
 
 #### Enemies (Core Archetypes)
 
@@ -236,14 +243,15 @@ Action items added below in relevant sections.
 1) Vertical stage wave-5 finish line
 
 - Camera polish: intro zoom-out, subtle bob; skipIntro flag
-- [x] Subtle bob (vertical mode)
-- [x] skipIntro flag
+  - [x] Zoom ~0.80
+  - [x] Subtle bob (vertical mode)
+  - [x] skipIntro flag
 - Bounds: spawn culling; prox-box no-spawn; min-TTI check
-- [x] Prox-box no-spawn + min-TTI backoff
+  - [x] Prox-box no-spawn + min-TTI backoff
 - Input: right-drag/touch-drag nudge; touch fire hold; pickup magnetization
-- [x] Touch-drag also nudges
-- [x] Right-drag nudge (basic)
-- [x] Pickup magnetization toward player
+  - [x] Touch-drag also nudges
+  - [x] Right-drag nudge (basic)
+  - [x] Pickup magnetization toward player
 - HUD: decide overheat policy (hide vs. expanded), reflect in heat UI
   - [x] Implemented: expanded meter in vertical; policy toggle in settings and URL
 - Stage beats: add 1–2 more simple formations; add fairness guards
@@ -256,10 +264,16 @@ Action items added below in relevant sections.
 
 1) Dev flags and overlays
 
-- `mode`/`zoom`/`speed`/`skipIntro`/`patterns`; simple path/formation debug overlay
+- `mode`/`zoom`/`speed`/`skipIntro`/`patterns`/`pattern`/`heat`; simple path/formation debug overlay
 
 1) Performance/QA quick pass
 
 - Pooled VFX/projectiles hotspots; DPR/safe-area checks; mobile ergos
+
+1) Automation & tooling
+
+- [x] Add readiness signal (window.spacerReady + body[data-spacer-ready="1"]) in app
+- [x] Update Playwright snapshots to wait up to ~65s for readiness
+- [x] Map local port 8085 in docker-compose.local for consistent local runs
 
 After Vertical Stage ships, resume: Elite expansion, weapon slots (Shotgun), Artillery, Dash, and pattern library breadth.
