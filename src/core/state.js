@@ -48,6 +48,8 @@ export const game = {
   player: { y: 0, targetY: 0 },
   // player world position for topdown mobility
   playerPos: { x: 0, y: 0 },
+  // player velocity (used in vertical mode accel/drag)
+  playerVel: { x: 0, y: 0 },
 };
 
 // Current world-space position of the player entity (turret). Rendering may offset the camera,

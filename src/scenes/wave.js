@@ -32,8 +32,10 @@ export const waveScene = {
   camZoom: 1,
   autoAbilityCd: 0,
   // wave flow state
-  state: 'spawn', // 'spawn' -> 'clear' -> (boss waves) 'bossIntro' -> 'bossFight' -> 'bossOutro' -> 'end'
+  state: 'spawn', // 'spawn' -> 'clear' -> (boss waves) 'stage' -> 'bossIntro' -> 'bossFight' -> 'bossOutro' -> 'end'
   stateT: 0,
+  // simple vertical stage timeline (wave 5 stub)
+  stageBeat: 0,
   enter(){
     this.enemySpawnT = 0; this.fireCooldown = 0; this.spawned = 0; game.lastReward = 0; game.earnedThisWave = 0; game.lastRewardKills = 0; game.lastRewardClear = 0;
     // set a per-wave quota and alive cap
@@ -50,7 +52,7 @@ export const waveScene = {
   // Notify UI to show play overlay
   window.dispatchEvent(new CustomEvent('spacer:show-ui', { detail:{ type:'play' } }));
     this.autoAbilityCd = 0;
-  // If boss wave, kick off cinematic immediately so it’s apparent
+  // If boss wave, start with a short vertical stage section before the boss
   if(isBossWave()){
   triggerLetterboxIn(0.8); enableBossBarrier(); setArena('vertical'); setInputScheme('verticalFixed');
   // Pre-position player below barrier so camera shift is evident (consider letterbox offset)
@@ -64,7 +66,8 @@ export const waveScene = {
   const startYcss = pb.y + pb.height - 60; // 60px above bottom of playable
   game.playerPos.x = 0;
   game.playerPos.y = (startYcss - (pb.y + pb.height/2)) * dpr;
-    this.state = 'bossIntro'; this.stateT = 0;
+  // run a short stage before boss
+  this.state = 'stage'; this.stateT = 0; this.stageBeat = 0;
   }
   },
   update(dt){
@@ -88,8 +91,8 @@ export const waveScene = {
   if(game.invulnT>0) game.invulnT = Math.max(0, game.invulnT - dt);
 
   // topdown/vertical free movement: WASD/Arrows
-  if(game.arenaMode==='topdown' || game.arenaMode==='vertical'){
-      const speed = 240; // px/s
+    if(game.arenaMode==='topdown' || game.arenaMode==='vertical'){
+      const speed = (game.arenaMode==='vertical')? 280 : 240; // px/s
       // keyboard state
       let { vx, vy } = (game.arenaMode==='vertical') ? activeScheme.getDesiredVelocity() : (function(){
         const left = keysHeld['a']||keysHeld['arrowleft'];
@@ -100,8 +103,17 @@ export const waveScene = {
         let vy = (down?1:0) - (up?1:0);
         const len = Math.hypot(vx,vy)||1; return { vx: vx/len, vy: vy/len };
       })();
-      game.playerPos.x += vx*speed*dt;
-      game.playerPos.y += vy*speed*dt;
+      if(game.arenaMode==='vertical'){
+        // accel/drag
+        const ax = vx*speed*2.4, ay = vy*speed*2.4;
+        game.playerVel.x += ax*dt; game.playerVel.y += ay*dt;
+        // drag
+        const drag = 4.5; game.playerVel.x -= game.playerVel.x*drag*dt; game.playerVel.y -= game.playerVel.y*drag*dt;
+        // integrate
+        game.playerPos.x += game.playerVel.x*dt; game.playerPos.y += game.playerVel.y*dt;
+      } else {
+        game.playerPos.x += vx*speed*dt; game.playerPos.y += vy*speed*dt;
+      }
       // clamp within playable bounds below barrier
       const dpr = window.devicePixelRatio || 1; const pb = getPlayableScreenBounds();
       const halfW = (canvas.width/dpr)/2, halfH=(canvas.height/dpr)/2;
@@ -119,13 +131,21 @@ export const waveScene = {
       // convert back to world
       game.playerPos.x = (clampedSX - (pb.x + pb.width/2)) * dpr;
       game.playerPos.y = (clampedSY - (pb.y + pb.height/2)) * dpr;
+      // if clamped, zero velocity component against the wall in vertical mode
+      if(game.arenaMode==='vertical'){
+        if(sx!==clampedSX) game.playerVel.x = 0;
+        if(syBase!==clampedSY) game.playerVel.y = 0;
+      }
     }
-    // heat
+    // heat (stage-local tweak: in vertical mode, expand cap cooling feel)
+    const verticalHeatBoost = (game.arenaMode==='vertical');
     if(game.overheated){
       game.heat = Math.max(0, game.heat - game.heatCool*dt);
       if(game.heat<=10) game.overheated=false;
     } else {
-      if(input.firing){ game.heat += game.heatRate*dt; } else { game.heat -= game.heatCool*dt; }
+      const heatRate = verticalHeatBoost ? game.heatRate*0.7 : game.heatRate;
+      const heatCool = verticalHeatBoost ? game.heatCool*1.35 : game.heatCool;
+      if(input.firing){ game.heat += heatRate*dt; } else { game.heat -= heatCool*dt; }
       game.heat = clamp(game.heat, 0, game.heatMax);
       if(game.heat>=game.heatMax){ game.overheated=true; }
     }
@@ -230,11 +250,26 @@ export const waveScene = {
       // wait for board to clear, then branch: boss wave or end
       if(alive===0){
         if(isBossWave()){
-          // cinematic intro and barrier
-          triggerLetterboxIn(0.8); enableBossBarrier(); setArena('vertical'); setInputScheme('verticalFixed'); this.state='bossIntro'; this.stateT=0;
+          // start vertical stage section
+          triggerLetterboxIn(0.8); enableBossBarrier(); setArena('vertical'); setInputScheme('verticalFixed'); this.state='stage'; this.stateT=0; this.stageBeat=0;
         } else {
           this.state='end'; this.stateT=0; concludeWave(); return;
         }
+      }
+    }
+    else if(this.state==='stage'){
+      // Three simple formation beats, then bossIntro
+      // Beat 0: lane grunts
+      if(this.stageBeat===0 && this.stateT>=0.4){ spawnLaneGrunts(); this.stageBeat=1; }
+      // Beat 1: wedge strikers
+      if(this.stageBeat===1 && this.stateT>=4.0){ spawnWedgeStrikers(); this.stageBeat=2; }
+      // Beat 2: turrets (tanks) drop-in
+      if(this.stageBeat===2 && this.stateT>=8.0){ spawnTurretPods(); this.stageBeat=3; }
+      // transition when field mostly clear after beat 3
+      if(this.stageBeat>=3 && this.stateT>=12.0){
+        // wait until few alive remain
+        let alive=0; forEachEnemy(e=>{ if(e.active) alive++; });
+        if(alive<=2){ this.state='bossIntro'; this.stateT=0; }
       }
     }
     else if(this.state==='bossIntro'){
@@ -374,6 +409,29 @@ function concludeWave(){
   game.wave++;
   // go to shop
   setScene(shopScene);
+}
+
+// --- Minimal formations for vertical stage stub ---
+function spawnLaneGrunts(){
+  // 5 lanes, spawn grunts offset vertically above
+  const cols = 5; const spacing = 80; const startX = -((cols-1)/2)*spacing;
+  for(let i=0;i<cols;i++){
+    const x = startX + i*spacing; const y = -360; spawnEnemyAt(x, y, 'grunt');
+  }
+}
+function spawnWedgeStrikers(){
+  // V wedge: strikers aiming downward
+  const rows = 3; const spacing = 70;
+  for(let r=0;r<rows;r++){
+    const off = (r*spacing);
+    spawnEnemyAt(-off, -320 - r*40, 'striker');
+    if(r>0) spawnEnemyAt(off, -320 - r*40, 'striker');
+  }
+}
+function spawnTurretPods(){
+  // a few tanks along a wide line
+  const xs = [-160, 0, 160];
+  for(const x of xs) spawnEnemyAt(x, -340, 'tank');
 }
 
 // ability triggers (keyboard/gamepad)

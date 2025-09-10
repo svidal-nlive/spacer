@@ -14,8 +14,8 @@ Tip: For partial implementations, leave boxes unchecked, but add a short note af
 
 #### Vertical Stage (Boss Waves 5, 10, 15…)
 - [x] Arena mode: `vertical` scaffold (mode switch, camera hook, basic scroll)
+	- [x] Parallax backdrop pass 1 (starfield)
 	- [ ] Stage lifecycle (pause/resume) and clean revert to ring with cinematic
-	- [ ] Parallax scrolling background (2–3 layers), performance-batched
 	- [ ] Camera: zoom-out to ~0.8 during intro, subtle vertical bob; respect safe-area gutters
 	- [ ] Playable bounds: spawn culling and gutter avoidance
 - [ ] Cinematics (intro/outro)
@@ -30,6 +30,7 @@ Tip: For partial implementations, leave boxes unchecked, but add a short note af
 		- [ ] Gamepad/keys: move ship (WASD/Arrows/Left stick)
 		- [ ] Right mouse held OR touch drag: move ship while held/dragging (stub present, needs nudge)
 	- [ ] Movement: accel/drag, clamp to bounds; magnetized pickups within small radius
+		- [x] Accel/drag and clamp
 	- [ ] Abilities tuning: Pulsar radius/push; EMP stun/interrupt; bullet-clear rules
 	- [ ] Overheat policy (stage-local):
 		- [ ] Decide: disable overheat entirely OR raise cap significantly (e.g., +200%) with faster cooldown
@@ -44,6 +45,7 @@ Tip: For partial implementations, leave boxes unchecked, but add a short note af
 		- [ ] Carriers + Drones (carrier sine path; drone releases)
 		- [ ] Dive bombers (telegraph + curved dash)
 		- [ ] Turret pods (hold position 2–3s; barrage; withdraw)
+	- [x] Minimal stage beats wired for wave 5 (lanes, wedge, tanks)
 		- [ ] Mine lines (horizontal/diagonal; proximity/warn ring)
 	- [ ] Pattern emitters: aimed/fan/ring/laser/bomb; fairness min-TTI
 	- [ ] Optional miniboss beat (pickup carrier or weakpoint pod)
@@ -57,6 +59,7 @@ Tip: For partial implementations, leave boxes unchecked, but add a short note af
 	- [ ] Boss bar alignment under letterbox; responsive at low DPR
 	- [ ] Controls overlay minimal; audio button clear state
 	- [ ] Heat meter behavior per overheat policy (hidden or expanded)
+		- [x] Temporary: gentler heat rate + faster cooldown in vertical mode
 - [ ] Testing & Dev
 	- [ ] URL flags: `mode=vertical`, `wave=N`, `skipIntro=1`, `zoom`, `speed`, `patterns`
 		- Note: basic flags `arena` and `scheme` are wired; extend to planned names
@@ -183,36 +186,21 @@ Tip: For partial implementations, leave boxes unchecked, but add a short note af
 ---
 
 ## Recommended next steps (keep in sync with updates above)
-1) Vertical Stage scaffold
-	- Arena mode `vertical`, scrolling parallax, camera zoom-out, gutters/bounds
-	- Dev URL flags (`mode`, `wave`, `skipIntro`, `zoom`, `speed`, `patterns`)
+1) Vertical stage wave-5 finish line
+	- Camera polish: intro zoom-out, subtle bob; skipIntro flag
+	- Bounds: spawn culling; prox-box no-spawn; min-TTI check
+	- Input: right-drag/touch-drag nudge; touch fire hold; pickup magnetization
+	- HUD: decide overheat policy (hide vs. expanded), reflect in heat UI
+	- Stage beats: add 1–2 more simple formations; add fairness guards
 
-2) Controls + Ship behavior
-	- Fixed-forward firing (mouse/touch hold to fire)
-	- Movement (WASD/Arrows/Left stick; right mouse hold or touch drag)
-	- Accel/drag + clamping; pickup magnetization
+2) Boss intro and outro cinematics
+	- Boss entrance lock-in; defeat bullet-clear + reward burst; revert to ring
 
-3) Cinematics
-	- Intro ship reveal + zoom; Outro dock + revert to ring mode
-	- Letterbox + SFX polish
+3) Dev flags and overlays
+	- `mode`/`zoom`/`speed`/`skipIntro`/`patterns`; simple path/formation debug overlay
 
-4) Formation primitives + timeline
-	- Implement 5–6 formations and a simple stage DSL; smoke test wave 5
-	- Fairness: prox-box and min-TTI guards
-
-5) Boss — The Overseer (vertical)
-	- Entrance, phases, curtains/lasers with safe lanes; HP bar alignment
-	- Bullet-clear + reward burst on defeat
-
-6) Overheat policy
-	- Decide and implement (disabled vs. expanded cap + faster cooldown)
-	- Update HUD behavior in stage
-
-7) QA + Performance
-	- DPR/safe-area QA; input ergonomics; pooled projectiles/VFX; batching
-
-8) Polish passes
-	- VFX/SFX, subtle HUD pulses; parallax quality; pattern colorways
+4) Performance/QA quick pass
+	- Pooled VFX/projectiles hotspots; DPR/safe-area checks; mobile ergos
 
 After Vertical Stage ships, resume: Elite expansion, weapon slots (Shotgun), Artillery, Dash, and pattern library breadth.
 
