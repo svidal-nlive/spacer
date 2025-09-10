@@ -33,6 +33,14 @@ export function spawnEnemy(radius, type='grunt'){
 
 export function spawnEnemyAt(x, y, type='grunt'){
   const e = enemies.find(o=>!o.active); if(!e) return null;
+  // Fairness: prox-box no-spawn; min time-to-impact backoff
+  const p = getPlayerWorldPos();
+  const d = Math.hypot(x - p.x, y - p.y);
+  const prox = 120; // no-spawn radius
+  if(d < prox){ const nx=(x-p.x)/(d||1), ny=(y-p.y)/(d||1); const extra = (prox - d) + 30; x = p.x + nx*(d+extra); y = p.y + ny*(d+extra); }
+  // ensure min TTI (~0.7s at 60px/s -> ~42px away along approach vector)
+  const minTTIDist = 42;
+  if(d < minTTIDist){ const nx=(x-p.x)/(d||1), ny=(y-p.y)/(d||1); x = p.x + nx*minTTIDist; y = p.y + ny*minTTIDist; }
   e.active=true; e.x = x; e.y = y; e.type=type; e.tel=0;
   if(type==='striker'){ e.r=12; e.hp=2; e.speed=95; e.fireCd=1.8; e.fireT=1.2; e.quota=1; }
   else if(type==='tank'){ e.r=16; e.hp=6; e.speed=40; e.fireCd=1.2; e.fireT=0.6; e.quota=2; }

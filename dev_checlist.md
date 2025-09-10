@@ -191,7 +191,9 @@ Tip: For partial implementations, leave boxes unchecked, but add a short note af
 		- [x] Subtle bob (vertical mode)
 		- [x] skipIntro flag
 	- Bounds: spawn culling; prox-box no-spawn; min-TTI check
+		- [x] Prox-box no-spawn + min-TTI backoff
 	- Input: right-drag/touch-drag nudge; touch fire hold; pickup magnetization
+		- [x] Touch-drag also nudges
 		- [x] Right-drag nudge (basic)
 		- [x] Pickup magnetization toward player
 	- HUD: decide overheat policy (hide vs. expanded), reflect in heat UI

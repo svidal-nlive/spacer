@@ -49,7 +49,9 @@ export function setInputScheme(name){ if(schemes[name]) activeScheme = schemes[n
 // Pointer right-button drag to nudge movement (vertical scheme only)
 // We attach conservative handlers; schemes can choose to ignore.
 window.addEventListener('pointerdown', (e)=>{
-  if(e.button===2){ activeScheme._dragging = true; activeScheme._dragLast = {x:e.clientX, y:e.clientY}; }
+  if(e.button===2 || e.pointerType==='touch'){
+    activeScheme._dragging = true; activeScheme._dragLast = {x:e.clientX, y:e.clientY};
+  }
 });
 window.addEventListener('pointermove', (e)=>{
   if(activeScheme._dragging){
