@@ -52,7 +52,15 @@ window.addEventListener('pointerdown', (e)=>{
   if(e.button===2){ activeScheme._dragging = true; activeScheme._dragLast = {x:e.clientX, y:e.clientY}; }
 });
 window.addEventListener('pointermove', (e)=>{
-  if(activeScheme._dragging){ activeScheme._dragLast = {x:e.clientX, y:e.clientY}; }
+  if(activeScheme._dragging){
+    const last = activeScheme._dragLast; activeScheme._dragLast = {x:e.clientX, y:e.clientY};
+    if(last && activeScheme.name==='verticalFixed'){
+      // nudge: small delta contributes to desired movement via global velocity (set on wave update)
+      const dx = e.clientX - last.x; const dy = e.clientY - last.y;
+      // store on scheme; wave can read and apply as accel
+      activeScheme._nudge = { dx, dy, t: performance.now() };
+    }
+  }
 });
 window.addEventListener('pointerup', ()=>{ activeScheme._dragging=false; activeScheme._dragLast=null; });
 window.addEventListener('contextmenu', (e)=>{

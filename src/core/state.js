@@ -30,6 +30,9 @@ export const game = {
   devMode: false,
   // dev pause (halts update loop while still rendering current frame)
   devPause: false,
+  // dev flags for vertical stage
+  devSkipIntro: false,
+  devZoom: null,
   // transient UI timers
   readyFlashQ: 0, readyFlashE: 0,
   screenFlash: 0,

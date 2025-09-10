@@ -106,6 +106,10 @@ export const waveScene = {
       if(game.arenaMode==='vertical'){
         // accel/drag
         const ax = vx*speed*2.4, ay = vy*speed*2.4;
+        // add optional pointer-drag nudge
+        if(activeScheme._nudge && (performance.now() - activeScheme._nudge.t) < 80){
+          const k = 10; game.playerVel.x += (activeScheme._nudge.dx||0)*k*dt; game.playerVel.y += (activeScheme._nudge.dy||0)*k*dt;
+        }
         game.playerVel.x += ax*dt; game.playerVel.y += ay*dt;
         // drag
         const drag = 4.5; game.playerVel.x -= game.playerVel.x*drag*dt; game.playerVel.y -= game.playerVel.y*drag*dt;
@@ -274,7 +278,8 @@ export const waveScene = {
     }
     else if(this.state==='bossIntro'){
       // Let the cinematic breathe briefly, then spawn boss
-      if(this.stateT>=1.0 && !bossActive()){
+      const introDelay = game.devSkipIntro? 0.2 : 1.0;
+      if(this.stateT>=introDelay && !bossActive()){
         spawnBoss();
       }
       if(bossActive()){
@@ -333,8 +338,9 @@ export const waveScene = {
   const dpr = window.devicePixelRatio || 1;
   const pb = getPlayableScreenBounds();
   const wCSS = canvas.width/dpr, hCSS = canvas.height/dpr;
-    const pressure = Math.min(1, (game.heat/game.heatMax)*0.7 + 0.3);
-    this.camZoom += (1 + 0.02*pressure - this.camZoom) * 0.08; // ease
+  const pressure = Math.min(1, (game.heat/game.heatMax)*0.7 + 0.3);
+  const targetZoom = (game.devZoom!=null? game.devZoom : (1 + 0.02*pressure));
+  this.camZoom += (targetZoom - this.camZoom) * 0.08; // ease
   // center of playable area in CSS px
   const cx = (pb.x + pb.width/2) * dpr;
   const cy = (pb.y + pb.height/2) * dpr;
@@ -345,7 +351,9 @@ export const waveScene = {
   game.player.y += (game.player.targetY - game.player.y) * ease;
   // Arena-managed camera transform (ring/topdown vs vertical)
   const arena = getArena();
-  arena.applyCamera(ctx, dpr*this.camZoom, cx, cy);
+  // subtle vertical bob in vertical mode
+  const bob = (game.arenaMode==='vertical') ? Math.sin(performance.now()/800)*6*dpr : 0;
+  arena.applyCamera(ctx, dpr*this.camZoom, cx, cy + bob);
   // turret (render at world origin in ring mode; at playerPos in topdown)
   ctx.save();
   const px = (game.arenaMode==='topdown') ? game.playerPos.x : 0;

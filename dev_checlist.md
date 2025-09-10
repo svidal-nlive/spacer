@@ -188,8 +188,12 @@ Tip: For partial implementations, leave boxes unchecked, but add a short note af
 ## Recommended next steps (keep in sync with updates above)
 1) Vertical stage wave-5 finish line
 	- Camera polish: intro zoom-out, subtle bob; skipIntro flag
+		- [x] Subtle bob (vertical mode)
+		- [x] skipIntro flag
 	- Bounds: spawn culling; prox-box no-spawn; min-TTI check
 	- Input: right-drag/touch-drag nudge; touch fire hold; pickup magnetization
+		- [x] Right-drag nudge (basic)
+		- [x] Pickup magnetization toward player
 	- HUD: decide overheat policy (hide vs. expanded), reflect in heat UI
 	- Stage beats: add 1–2 more simple formations; add fairness guards
 

@@ -18,9 +18,14 @@ export function spawnPickup(x,y){
 
 export function updatePickups(dt){
   for(const p of pool){ if(!p.active) continue; p.t -= dt; if(p.t<=0){ p.active=false; continue; }
-  // gentle magnet toward center on all devices (slightly stronger on touch)
-  const d = Math.hypot(p.x, p.y);
-  if(d>1){ const nx = -p.x/d, ny = -p.y/d; const base = 22; const speed = base + (input.isTouch? 14:0); p.x += nx*speed*dt; p.y += ny*speed*dt; }
+    // magnet toward player: stronger when near, stronger on touch; center fallback in ring mode
+    const ox = (game.arenaMode==='vertical' || game.arenaMode==='topdown')? game.playerPos.x : 0;
+    const oy = (game.arenaMode==='vertical' || game.arenaMode==='topdown')? game.playerPos.y : 0;
+    const dx = ox - p.x, dy = oy - p.y; const d = Math.hypot(dx,dy);
+    const base = 18 + (input.isTouch? 10:0);
+    const boost = d<140? (1.2 + (1 - d/140)*1.1) : 1.0;
+    const speed = base * boost;
+    if(d>1){ const nx = dx/d, ny = dy/d; p.x += nx*speed*dt; p.y += ny*speed*dt; }
   }
 }
 

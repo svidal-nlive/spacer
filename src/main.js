@@ -39,6 +39,15 @@ try{
   // Arena and input scheme dev flags
   const arena = params.get('arena'); if(arena){ setArena(arena); }
   const scheme = params.get('scheme'); if(scheme){ setInputScheme(scheme); }
+  // Aliases per checklist
+  const mode = params.get('mode'); if(mode){ setArena(mode); }
+  const speed = parseFloat(params.get('speed')||'');
+  if(!Number.isNaN(speed)){
+    try{ import('./engine/arena.js').then(m=>{ try{ m.getArena().speed = speed; }catch{} }); }catch{}
+  }
+  // Cinematic helpers
+  if(params.get('skipIntro')==='1') { game.devSkipIntro = true; }
+  const zoom = parseFloat(params.get('zoom')||''); if(!Number.isNaN(zoom)){ game.devZoom = zoom; }
 }catch{ /* no-op */ }
 
 // Enforce ability bars in top gutter by default, overriding any saved preference
